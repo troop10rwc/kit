@@ -83,15 +83,18 @@ bump; everything else is plain pnpm.)
 
 The workflow authenticates with the built-in `GITHUB_TOKEN` (it has
 `packages: write` for this repo), so no PAT is needed on the publish side.
-Published package visibility follows this repo's visibility.
+This repo is **public**, so new publishes are public too; any GitHub token can
+then install them (see Consuming below).
 
 For changelogs later, adopt **Changesets**; it's overkill at two consumers today.
 
 ## Consuming from an app repo
 
-1. Copy `consumer.npmrc.example` to `.npmrc` in the app and provide `NPM_TOKEN`
-   (a PAT with `read:packages`) — see that file for the GH Packages access note.
-   pnpm reads the same `.npmrc`, so the scope/auth mapping works unchanged.
+1. Copy `consumer.npmrc.example` to `.npmrc` in the app. The packages are
+   **public**, so any GitHub token works as `NPM_TOKEN` — in CI just use
+   `${{ secrets.GITHUB_TOKEN }}`; locally use any classic PAT. (GitHub Packages'
+   npm registry still requires *some* token even for public packages — there's no
+   anonymous install.) pnpm reads the same `.npmrc`.
 2. Install (pnpm):
    ```bash
    pnpm add @troop10rwc/ui @troop10rwc/shared

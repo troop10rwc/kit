@@ -5,12 +5,12 @@
 @troop10rwc:registry=https://npm.pkg.github.com
 //npm.pkg.github.com/:_authToken=${NPM_TOKEN}
 
-# NPM_TOKEN must be a GitHub Personal Access Token with `read:packages`.
-#   - Local dev:  put the token in your *user* ~/.npmrc, NOT in the committed file,
-#                 or export NPM_TOKEN in your shell.
-#   - CI:         add it as a repo secret and expose it as env NPM_TOKEN.
+# The @troop10rwc/* packages are PUBLIC, so any valid GitHub token can install
+# them — no `read:packages` scope and no per-repo access grant needed. But note:
+# GitHub Packages' npm registry has no anonymous access, so a token is still
+# required even for public packages.
 #
-# Why a PAT and not the built-in GITHUB_TOKEN? A repo's GITHUB_TOKEN cannot read
-# packages published by a *different* repo by default. Either use a PAT, or make
-# the package "Internal" visibility (org-wide) and grant this repo access in the
-# package settings.
+#   - CI:         use the built-in token directly — it works from any repo:
+#                   NPM_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#   - Local dev:  any GitHub Personal Access Token (classic) works. Put it in your
+#                 *user* ~/.npmrc, NOT in the committed file, or export NPM_TOKEN.
