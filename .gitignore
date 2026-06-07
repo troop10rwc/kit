@@ -1,0 +1,16 @@
+node_modules/
+packages/*/dist/
+*.log
+*.tsbuildinfo
+.DS_Store
+
+# yalc (local cross-repo dev)
+.yalc/
+yalc.lock
+
+# never commit a token-bearing npmrc
+.npmrc.local
+
+# delivery artifacts (the kit was shipped as a tarball)
+troop10-kit.tar.gz
+troop10-kit-README.md

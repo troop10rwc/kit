@@ -1,0 +1,33 @@
+name: release
+
+# Lockstep release: bump all packages together, push a v* tag, this publishes.
+#   npm run release:minor   (bumps + pushes tag)
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+  packages: write   # GITHUB_TOKEN can publish to this repo's GitHub Packages
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://npm.pkg.github.com
+          scope: "@troop10rwc"
+
+      - run: npm ci
+
+      - run: npm run build --workspaces --if-present
+
+      # Publishes each workspace package. publishConfig.registry pins GH Packages.
+      - run: npm publish --workspaces
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

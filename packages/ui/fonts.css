@@ -1,0 +1,11 @@
+/* @troop10rwc/ui/fonts.css
+   Self-hosted faces (no third-party CDN request behind Cloudflare Access).
+   Import ONCE in the consuming app's entry, before theme.css.
+   The @fontsource packages are declared dependencies of this package, so they
+   resolve from the consumer's node_modules automatically. */
+
+@import "@fontsource-variable/archivo/index.css";
+@import "@fontsource-variable/hanken-grotesk/index.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+@import "@fontsource/ibm-plex-mono/600.css";

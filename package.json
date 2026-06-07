@@ -1,0 +1,24 @@
+{
+  "name": "@troop10rwc/kit",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared UI, Worker, and type packages for Troop 10 RWC apps (scoutpack and friends).",
+  "repository": { "type": "git", "url": "git+https://github.com/troop10rwc/kit.git" },
+  "workspaces": [
+    "packages/shared",
+    "packages/ui",
+    "packages/worker-kit"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "clean": "rm -rf packages/*/dist",
+    "release:patch": "npm version patch --workspaces --include-workspace-root && git push --follow-tags",
+    "release:minor": "npm version minor --workspaces --include-workspace-root && git push --follow-tags"
+  },
+  "devDependencies": {
+    "tsup": "^8.3.0",
+    "typescript": "^5.6.0"
+  }
+}

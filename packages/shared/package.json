@@ -1,0 +1,22 @@
+{
+  "name": "@troop10rwc/shared",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Types and contracts shared by the React client and the Cloudflare Worker.",
+  "files": ["dist"],
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "tsup": "^8.3.0",
+    "typescript": "^5.6.0"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  }
+}
