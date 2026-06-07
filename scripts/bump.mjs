@@ -37,5 +37,7 @@ for (const f of files) {
 
 execSync(`git add ${files.join(" ")}`, { stdio: "inherit" });
 execSync(`git commit -m "release v${next}"`, { stdio: "inherit" });
-execSync(`git tag v${next}`, { stdio: "inherit" });
+// Annotated (-a) so `git push --follow-tags` actually pushes it — lightweight
+// tags are skipped by --follow-tags and the release would never fire.
+execSync(`git tag -a v${next} -m "release v${next}"`, { stdio: "inherit" });
 console.log(`\nbumped all packages to v${next} (lockstep) and tagged.`);
