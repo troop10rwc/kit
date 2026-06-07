@@ -16,7 +16,7 @@
     "hono": "^4.0.0"
   },
   "dependencies": {
-    "@troop10rwc/shared": "^0.1.0"
+    "@troop10rwc/shared": "workspace:^"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240000.0",

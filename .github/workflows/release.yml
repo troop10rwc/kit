@@ -1,7 +1,7 @@
 name: release
 
 # Lockstep release: bump all packages together, push a v* tag, this publishes.
-#   npm run release:minor   (bumps + pushes tag)
+#   pnpm run release:minor   (bumps + tags + pushes)
 on:
   push:
     tags:
@@ -9,7 +9,7 @@ on:
 
 permissions:
   contents: read
-  packages: write   # GITHUB_TOKEN can publish to this repo's GitHub Packages
+  packages: write # GITHUB_TOKEN can publish to this repo's GitHub Packages
 
 jobs:
   publish:
@@ -17,17 +17,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Installs the pnpm version pinned by the root package.json "packageManager".
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           registry-url: https://npm.pkg.github.com
           scope: "@troop10rwc"
+          cache: pnpm
 
-      - run: npm ci
+      - run: pnpm install --frozen-lockfile
 
-      - run: npm run build --workspaces --if-present
+      - run: pnpm -r build
 
-      # Publishes each workspace package. publishConfig.registry pins GH Packages.
-      - run: npm publish --workspaces
+      # Publishes every workspace package. publishConfig.registry pins GH Packages;
+      # pnpm rewrites the workspace:^ dep ranges to real versions on publish.
+      - run: pnpm -r publish --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

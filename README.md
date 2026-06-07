@@ -30,13 +30,19 @@ kit/
 
 ## Local development (inside this repo)
 
+This repo uses **pnpm** (pinned via `packageManager` in `package.json`; a
+`preinstall` guard rejects npm/yarn). Enable it with `corepack enable` if you
+don't have pnpm.
+
 ```bash
-npm install          # symlinks the three packages together via workspaces
-npm run build        # tsup builds all (shared first — it's listed first)
-npm run typecheck
+pnpm install         # links the three packages together via the pnpm workspace
+pnpm build           # tsup builds all (-r runs the dependency graph in order)
+pnpm typecheck
 ```
 
-No registry auth is needed for internal work — workspaces link locally.
+No registry auth is needed for internal work — the workspace links locally.
+`worker-kit` depends on `shared` via the `workspace:^` protocol, so pnpm always
+uses the local copy and rewrites it to a real version range at publish time.
 
 ## Cross-repo dev loop (the part a monorepo would have hidden)
 
@@ -48,12 +54,12 @@ you don't get the duplicate-React crash that `npm link` causes.
 npm i -g yalc
 
 # in kit/packages/ui
-npm run build && yalc publish
+pnpm build && yalc publish
 
 # in the app repo (e.g. scoutpack)
 yalc add @troop10rwc/ui      # first time
 # ...after each change in kit:
-cd kit/packages/ui && npm run build && yalc push   # auto-updates the app
+cd kit/packages/ui && pnpm build && yalc push   # auto-updates the app
 ```
 
 `yalc remove @troop10rwc/ui` in the app, then a normal `npm install`, restores
@@ -66,10 +72,14 @@ Versioning is **lockstep** — all three packages move together, which avoids th
 simple for a solo maintainer.
 
 ```bash
-npm run release:minor     # or release:patch
-# = npm version <bump> across all packages + root, creates tag vX.Y.Z,
-#   pushes with the tag -> the release workflow publishes to GH Packages.
+pnpm release:minor     # or release:patch
+# = scripts/bump.mjs bumps all packages + root to one version, commits,
+#   creates tag vX.Y.Z, and pushes with the tag -> the release workflow runs
+#   `pnpm -r publish` to GH Packages (rewriting workspace:^ to a real range).
 ```
+
+(pnpm has no native recursive `version`, so `scripts/bump.mjs` does the lockstep
+bump; everything else is plain pnpm.)
 
 The workflow authenticates with the built-in `GITHUB_TOKEN` (it has
 `packages: write` for this repo), so no PAT is needed on the publish side.
@@ -81,10 +91,11 @@ For changelogs later, adopt **Changesets**; it's overkill at two consumers today
 
 1. Copy `consumer.npmrc.example` to `.npmrc` in the app and provide `NPM_TOKEN`
    (a PAT with `read:packages`) — see that file for the GH Packages access note.
-2. Install:
+   pnpm reads the same `.npmrc`, so the scope/auth mapping works unchanged.
+2. Install (pnpm):
    ```bash
-   npm i @troop10rwc/ui @troop10rwc/shared
-   npm i @troop10rwc/worker-kit            # in the worker side
+   pnpm add @troop10rwc/ui @troop10rwc/shared
+   pnpm add @troop10rwc/worker-kit            # in the worker side
    ```
 3. Wire the UI once in the app entry (order matters — fonts, then tokens):
    ```ts

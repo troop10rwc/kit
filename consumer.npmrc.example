@@ -1,5 +1,6 @@
 # Copy this to `.npmrc` in each consuming app repo (scoutpack, etc.).
-# It tells npm to resolve the @troop10rwc scope from GitHub Packages.
+# It tells npm/pnpm to resolve the @troop10rwc scope from GitHub Packages.
+# pnpm reads this same .npmrc format, so no extra config is needed.
 
 @troop10rwc:registry=https://npm.pkg.github.com
 //npm.pkg.github.com/:_authToken=${NPM_TOKEN}
