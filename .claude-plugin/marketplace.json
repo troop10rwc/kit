@@ -1,0 +1,19 @@
+{
+  "$schema": "https://code.claude.com/schemas/marketplace.json",
+  "name": "troop10rwc",
+  "owner": {
+    "name": "Troop 10 RWC"
+  },
+  "description": "Claude Code plugins for Troop 10 RWC apps — the shared stack and back-office design system.",
+  "plugins": [
+    {
+      "name": "troop10-kit",
+      "source": "./plugins/troop10-kit",
+      "description": "Wire @troop10rwc/kit into an app and build back-office UI on the STYLE.md design contract.",
+      "version": "0.1.0",
+      "author": { "name": "Troop 10 RWC" },
+      "homepage": "https://github.com/troop10rwc/kit",
+      "keywords": ["troop10rwc", "design-system", "cloudflare", "hono", "react", "d1"]
+    }
+  ]
+}

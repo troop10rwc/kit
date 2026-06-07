@@ -1,0 +1,7 @@
+{
+  "name": "troop10-kit",
+  "description": "The Troop 10 RWC shared stack: wire @troop10rwc/kit into an app and build back-office UI on the STYLE.md design contract.",
+  "version": "0.1.0",
+  "author": { "name": "Troop 10 RWC" },
+  "homepage": "https://github.com/troop10rwc/kit"
+}

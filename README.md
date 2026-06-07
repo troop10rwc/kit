@@ -14,6 +14,12 @@ Split by runtime on purpose: this keeps React out of Worker bundles and DOM
 types out of edge code. The design system itself is documented in
 `packages/ui/STYLE.md` (the contract for new pages).
 
+> **Sharing with the other apps?** [`STACK.md`](STACK.md) is the canonical guide
+> for consuming the kit across repos (auth, install, wiring). This repo is also a
+> **Claude Code plugin marketplace** — `/plugin marketplace add troop10rwc/kit`
+> then `/plugin install troop10-kit@troop10rwc` gives agents the setup +
+> design-contract skills. Per-repo `CLAUDE.md` pointer: [`docs/CLAUDE.snippet.md`](docs/CLAUDE.snippet.md).
+
 ## Layout
 
 ```
