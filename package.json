@@ -1,10 +1,13 @@
 {
   "name": "@troop10rwc/kit",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "description": "Shared UI, Worker, and type packages for Troop 10 RWC apps (scoutpack and friends).",
-  "repository": { "type": "git", "url": "git+https://github.com/troop10rwc/kit.git" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/troop10rwc/kit.git"
+  },
   "packageManager": "pnpm@10.11.0",
   "engines": {
     "node": ">=22",
@@ -23,6 +26,8 @@
     "typescript": "^5.6.0"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["esbuild"]
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   }
 }

@@ -1,12 +1,22 @@
 {
   "name": "@troop10rwc/ui",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "Troop 10 back-office component library + design tokens (the five interaction models).",
-  "sideEffects": ["**/*.css"],
-  "files": ["dist", "theme.css", "fonts.css", "STYLE.md"],
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "files": [
+    "dist",
+    "theme.css",
+    "fonts.css",
+    "STYLE.md"
+  ],
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
     "./theme.css": "./theme.css",
     "./fonts.css": "./fonts.css"
   },
