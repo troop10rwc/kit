@@ -13,8 +13,10 @@ back-office UI on the design contract.
 
 ## Skills
 
-- **`consume-kit`** — registry auth (GitHub Packages `.npmrc`), install, entry
-  CSS import order, and Worker auth wiring (`withAuth` / `requireLeader`).
+- **`consume-kit`** — **preps the current repo**: detects the package manager,
+  writes `.npmrc`, installs the packages, wires entry CSS imports, appends a kit
+  pointer to `CLAUDE.md`, and registers the plugin at the repo level (idempotent;
+  leaves the commit to you). Also documents Worker auth wiring.
 - **`backoffice-style`** — the design contract: the five interaction models,
   `--t10-*` tokens, and the `@troop10rwc/ui` component catalog.
 

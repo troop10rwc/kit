@@ -1,6 +1,6 @@
 ---
 name: consume-kit
-description: Set up and consume @troop10rwc/kit (shared, ui, worker-kit) in a Troop 10 RWC app — the GitHub Packages .npmrc/auth, the entry-point CSS import order, and wiring worker-kit Access auth. Use when adding the kit to a repo, fixing a @troop10rwc install or 401/403 auth error, or wiring AppShell/auth for the first time.
+description: Prep a Troop 10 RWC app to consume @troop10rwc/kit (shared, ui, worker-kit). When invoked, it sets up GitHub Packages auth (.npmrc), installs the packages, wires the entry CSS imports, drops a kit pointer into CLAUDE.md, and registers the plugin at the repo level. Use when adding the kit to a repo, fixing a @troop10rwc install or 401/403 auth error, or wiring AppShell/auth for the first time.
 ---
 
 # Consume @troop10rwc/kit
@@ -15,50 +15,71 @@ re-implementing Access auth:**
 | `@troop10rwc/ui` | React 19 (DOM) | back-office components + `theme.css` / `fonts.css` design tokens |
 | `@troop10rwc/worker-kit` | Cloudflare Workers (`workerd`) | `verifyAccessJwt`, `roleForPosition`, `withAuth`, `requireLeader` |
 
-## 1. Registry auth (GitHub Packages)
+## When invoked: prep this repo
 
-The packages publish to **GitHub Packages** (not npmjs) and are **public** — but
-GitHub Packages' npm registry has **no anonymous access**, so a token is always
-required. Add `.npmrc` at the repo root:
+Do these in order **in the current repo**. They're idempotent — detect and skip
+anything already done, and **report what changed; leave committing to the user**
+(if the repo is on its default branch, create a branch before committing).
 
-```ini
-@troop10rwc:registry=https://npm.pkg.github.com
-//npm.pkg.github.com/:_authToken=${NPM_TOKEN}
-```
+1. **Detect the package manager** from the lockfile: `pnpm-lock.yaml` → pnpm,
+   `package-lock.json` → npm, `yarn.lock` → yarn. Use it for every command below.
+   Detect whether there's a Worker (`wrangler.*`, `src/worker/`) — only then
+   install `worker-kit`.
 
-- **CI:** `NPM_TOKEN: ${{ secrets.GITHUB_TOKEN }}` — works from any repo, no
-  scopes or per-repo grants needed.
-- **Local:** any classic PAT exported as `NPM_TOKEN`, or placed in your user
-  `~/.npmrc` (never commit a token-bearing `.npmrc`).
-- A `401/403 … does not match expected scopes` means the token/`.npmrc` is
-  missing — it is **not** a package-visibility problem.
+2. **Create `.npmrc`** at the repo root if absent (don't overwrite an existing
+   token line):
+   ```ini
+   @troop10rwc:registry=https://npm.pkg.github.com
+   //npm.pkg.github.com/:_authToken=${NPM_TOKEN}
+   ```
+   The packages are public, but GitHub Packages' npm registry has **no anonymous
+   access** — a token is always required:
+   - **CI:** `NPM_TOKEN: ${{ secrets.GITHUB_TOKEN }}` (works from any repo).
+   - **Local:** any classic PAT exported as `NPM_TOKEN` or in your user `~/.npmrc`.
+     For a one-off install: `NPM_TOKEN=$(gh auth token) <pm> install`.
+   - A `401/403 … does not match expected scopes` means the token is missing —
+     it is **not** a visibility problem.
 
-pnpm reads the same `.npmrc`.
+3. **Install** (use the detected PM; `add` for pnpm/yarn, `i` for npm):
+   ```bash
+   <pm> add @troop10rwc/ui @troop10rwc/shared      # client
+   <pm> add @troop10rwc/worker-kit                  # only if there's a Worker
+   ```
+   React 19 is a **peer** dep of `ui`; the app's own React satisfies it.
 
-## 2. Install
+4. **Wire the UI** — in the client entry (e.g. `src/main.tsx`, `src/client/main.tsx`),
+   add these **before** other imports if not already present (order matters):
+   ```ts
+   import "@troop10rwc/ui/fonts.css";   // fonts FIRST
+   import "@troop10rwc/ui/theme.css";   // then tokens
+   ```
+   Then import components from `@troop10rwc/ui` as needed. Read the design contract
+   at `node_modules/@troop10rwc/ui/STYLE.md` before building pages (or use the
+   `backoffice-style` skill).
 
-```bash
-pnpm add @troop10rwc/ui @troop10rwc/shared      # client
-pnpm add @troop10rwc/worker-kit                  # worker side
-```
+5. **Make the repo kit-aware** — append the pointer block from the kit's
+   `docs/CLAUDE.snippet.md` to this repo's `CLAUDE.md` (skip if a `@troop10rwc/kit`
+   section already exists). Don't copy the kit's `STACK.md` in — link to it; the
+   repo keeps its own app docs.
 
-React 19 is a **peer** dependency of `ui`; the app's own React satisfies it.
+6. **Register the plugin at the repo level** — merge into `.claude/settings.json`
+   so the skills auto-load for anyone who trusts the repo (don't clobber existing keys):
+   ```json
+   {
+     "extraKnownMarketplaces": {
+       "troop10rwc": { "source": { "source": "github", "repo": "troop10rwc/kit" } }
+     },
+     "enabledPlugins": { "troop10-kit@troop10rwc": true }
+   }
+   ```
 
-## 3. Wire the UI (entry point — order matters)
+7. **Verify** — run the repo's typecheck/build (e.g. `<pm> run typecheck`) and
+   confirm `@troop10rwc/*` resolves. Summarize the files changed and the install.
 
-```ts
-import "@troop10rwc/ui/fonts.css";   // fonts FIRST
-import "@troop10rwc/ui/theme.css";   // then tokens
-import { AppShell, DataTable, Drawer } from "@troop10rwc/ui";
-```
-
-Before building pages, read the design contract at
-`node_modules/@troop10rwc/ui/STYLE.md` — or use the `backoffice-style` skill.
-
-## 4. Wire Worker auth
+## Wire Worker auth (when the app has a Worker)
 
 `worker-kit` ships real `roleForPosition` / `requireLeader`. `withAuth` resolves
-the Access identity and the roster role onto the Hono context:
+the Access identity and roster role onto the Hono context:
 
 ```ts
 import { withAuth, requireLeader } from "@troop10rwc/worker-kit";
@@ -78,10 +99,12 @@ Handlers then read `c.var.identity` and `c.var.role`.
 **Important:** in the current kit, `verifyAccessJwt` is a **stub that throws** —
 port the WebCrypto RS256 verification (team JWKS) from the app's
 `src/worker/auth.ts` into the kit before relying on it, then delete the per-app
-copy. `teamDomain` / `audience` are env/config — never hard-code or bundle them
-(the published artifact is world-downloadable).
+copy so both apps share one. `teamDomain` / `audience` are env/config — never
+hard-code or bundle them (the published artifact is world-downloadable). Replacing
+a repo's existing local auth/types with the kit is a deliberate migration, not part
+of the basic prep above — do it as its own reviewed change.
 
-## 5. Stay current
+## Stay current
 
 Point **Renovate** or **Dependabot** at `@troop10rwc/*` so kit bumps arrive as
 PRs. Releases are **lockstep** — all three packages move together.

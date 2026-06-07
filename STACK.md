@@ -100,11 +100,43 @@ The plugin source lives in [`plugins/troop10-kit/`](plugins/troop10-kit/); the
 `backoffice-style` skill points at the canonical `STYLE.md`, so keep it in sync
 when the design system changes.
 
-## Per-repo setup
+## Adopting the kit in a repo
 
-In each consuming repo, keep it to a **pointer**, not a copy:
+Two steps. **Don't copy this STACK.md into the app** — it's the kit's canonical
+doc; copying drifts. The app keeps its own docs and just *points* here.
 
-- `.npmrc` — copied from `consumer.npmrc.example`.
-- `CLAUDE.md` — append the ready-made block in
-  [`docs/CLAUDE.snippet.md`](docs/CLAUDE.snippet.md) so agents in that repo are
-  kit-aware and link back here.
+**1. Register the plugin (so an agent can do the rest).** Either run it once per
+machine:
+
+```
+/plugin marketplace add troop10rwc/kit
+/plugin install troop10-kit@troop10rwc
+```
+
+…or commit it to the repo so it auto-loads for anyone who trusts the workspace —
+add to the app's `.claude/settings.json`:
+
+```json
+{
+  "extraKnownMarketplaces": {
+    "troop10rwc": { "source": { "source": "github", "repo": "troop10rwc/kit" } }
+  },
+  "enabledPlugins": { "troop10-kit@troop10rwc": true }
+}
+```
+
+**2. Run the prep skill** in the app repo:
+
+```
+/troop10-kit:consume-kit
+```
+
+It detects the package manager, writes `.npmrc`, installs the packages, wires the
+entry CSS imports, appends the kit pointer to `CLAUDE.md`, registers the plugin at
+the repo level, and verifies — then reports what changed and leaves the commit to
+you. (All of that is also written out in [Consuming the kit](#consuming-the-kit)
+if you'd rather do it by hand.)
+
+> **Swapping a repo's *existing* local code onto the kit** (e.g. replacing a local
+> `src/shared` or `src/worker/auth.ts` with `@troop10rwc/shared` / `worker-kit`)
+> is a deliberate migration with its own testing — not part of the basic prep.
