@@ -15,7 +15,8 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "peerDependencies": {
     "hono": "^4.0.0"
@@ -27,7 +28,8 @@
     "@cloudflare/workers-types": "^4.20240000.0",
     "hono": "^4.6.0",
     "tsup": "^8.3.0",
-    "typescript": "^5.6.0"
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.9"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"

@@ -17,6 +17,7 @@
     "preinstall": "npx only-allow pnpm",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r --if-present test",
     "clean": "rm -rf packages/*/dist",
     "release:patch": "node scripts/bump.mjs patch && git push --follow-tags",
     "release:minor": "node scripts/bump.mjs minor && git push --follow-tags"
