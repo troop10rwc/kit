@@ -1,6 +1,6 @@
 {
   "name": "@troop10rwc/kit",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "type": "module",
   "description": "Shared UI, Worker, and type packages for Troop 10 RWC apps (scoutpack and friends).",
