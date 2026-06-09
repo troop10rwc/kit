@@ -207,6 +207,13 @@ Keep the footer to running aggregates that recompute as cells change.
 `SplitView` is the always-open variant: `<SplitView list={…} detail={…} />`.
 Drawer closes on Escape and scrim click; both are wired for you.
 
+`Drawer` is built on [Radix](https://www.radix-ui.com/)'s **headless** `Dialog`
+— Radix owns only the *behavior* (focus trap, focus restore on close, Escape +
+scrim dismissal, dialog ARIA), while every pixel still comes from our `t10-*`
+classes. It renders without a portal so the dialog overlays the `OverlayHost`
+region (not the whole viewport), preserving the Model 3 "edit in context" feel.
+You author the body/footer exactly as before; the API is unchanged.
+
 ### `CommandPalette` — Model 4 — `CommandPalette.tsx`
 
 Mount once near the root; the `useCommandPalette()` hook wires ⌘K/Ctrl-K.
@@ -331,7 +338,11 @@ there and update this section in the same PR.
 - Preview any write the user didn't type field-by-field.
 
 **Don't**
-- Introduce a UI framework, CSS-in-JS, or a fourth font.
+- Introduce a *styling* framework (Tailwind, MUI, Chakra…), CSS-in-JS, or a
+  fourth font. **Headless behavior** primitives (Radix, React Aria) are allowed
+  — and preferred — for interaction correctness (focus trap, keyboard nav, ARIA)
+  *as long as* all styling stays in `t10-*` classes/tokens. The rule is "no one
+  else's CSS," not "no dependencies."
 - Add new hues per feature, or use raw hex where a token exists.
 - Use clay for anything but the primary/destructive action.
 - Navigate to a new page just to edit one field.
@@ -342,7 +353,9 @@ there and update this section in the same PR.
 ## 9. Extending the system
 
 Adding a component? It must: (a) use only `--t10-*` tokens, (b) expose semantic
-props (tones, not colors), (c) be keyboard-operable with visible focus, (d) work
+props (tones, not colors), (c) be keyboard-operable with visible focus — for
+dialogs/menus/tooltips/listboxes, build on a headless primitive (Radix/React
+Aria) rather than hand-rolling focus and ARIA — (d) work
 under `prefers-reduced-motion`, and (e) get a row in §5 plus, if it changes the
 decision space, §4. New status meaning → add a tone mapping, not a new pill color.
 
