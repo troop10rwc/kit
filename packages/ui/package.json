@@ -32,7 +32,8 @@
   "dependencies": {
     "@fontsource-variable/archivo": "^5.1.0",
     "@fontsource-variable/hanken-grotesk": "^5.1.0",
-    "@fontsource/ibm-plex-mono": "^5.1.0"
+    "@fontsource/ibm-plex-mono": "^5.1.0",
+    "@radix-ui/react-dialog": "^1.1.6"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",
