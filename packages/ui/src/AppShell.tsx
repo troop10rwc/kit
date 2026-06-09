@@ -55,7 +55,7 @@ export function AppShell({
         </div>
       </div>
 
-      <div style={{ padding: "18px 22px 60px", maxWidth: 1240, margin: "0 auto" }}>
+      <div className="t10-shellwrap">
         <div className="t10-shell">
           <nav className="t10-sidebar" aria-label="Sections">
             {groups.map((g) => {

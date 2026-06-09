@@ -275,6 +275,14 @@ OIDC claim (see `src/worker/roster.ts`).
 Since there's no router library, `page` is your own state; the sidebar drives it.
 Keep the `id`s aligned with whatever client-side gating you already use.
 
+**Mobile.** The back office is desktop-first, but leaders use it on phones. The
+frame is responsive below `760px` (handled in `theme.css`, no per-page work):
+the `AppShell` grid stacks to one column and the sidebar becomes a horizontal,
+swipeable nav strip (group eyebrows hide); `SplitView` stacks list-over-detail;
+`Drawer` goes full-bleed. `DataTable` keeps its own horizontal scroll, so wide
+ledgers stay usable. If you add a new fixed multi-column layout, give it a
+single-column fallback in the same `@media (max-width: 760px)` block.
+
 ---
 
 ## 7. Editing & state conventions
