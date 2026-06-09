@@ -275,13 +275,32 @@ OIDC claim (see `src/worker/roster.ts`).
 Since there's no router library, `page` is your own state; the sidebar drives it.
 Keep the `id`s aligned with whatever client-side gating you already use.
 
-**Mobile.** The back office is desktop-first, but leaders use it on phones. The
-frame is responsive below `760px` (handled in `theme.css`, no per-page work):
-the `AppShell` grid stacks to one column and the sidebar becomes a horizontal,
-swipeable nav strip (group eyebrows hide); `SplitView` stacks list-over-detail;
-`Drawer` goes full-bleed. `DataTable` keeps its own horizontal scroll, so wide
-ledgers stay usable. If you add a new fixed multi-column layout, give it a
-single-column fallback in the same `@media (max-width: 760px)` block.
+### Responsive
+
+The back office is desktop-first, but leaders use it on phones at meetings and
+on trips. There is **one breakpoint — phones, `≤760px`** — and we keep it that
+way on purpose: resist adding a tablet tier until a real screen proves it needs
+one, since every tier is another place layouts can drift.
+
+The frame is responsive out of the box (handled in `theme.css`, no per-page
+work): the `AppShell` grid stacks to one column and the sidebar becomes a
+horizontal, swipeable nav strip (group eyebrows hide); `SplitView` stacks
+list-over-detail; `Drawer` goes full-bleed. `DataTable` keeps its own horizontal
+scroll, so wide ledgers stay usable.
+
+When you build a **new multi-column layout**, don't hand-roll a media query —
+add `.t10-stack-sm` to the grid container and it collapses to a single column at
+the breakpoint for free:
+
+```tsx
+<div className="t10-stack-sm" style={{ display: "grid", gridTemplateColumns: "260px 1fr" }}>
+  {/* two columns on desktop, stacked on phones */}
+</div>
+```
+
+The 760px value lives in the `@media` queries in `theme.css` (CSS can't read a
+custom property inside a media condition); if you ever move the tier, change it
+there and update this section in the same PR.
 
 ---
 
