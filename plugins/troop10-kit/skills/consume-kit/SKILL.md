@@ -96,13 +96,14 @@ app.post("/api/roster", requireLeader(), handler);
 
 Handlers then read `c.var.identity` and `c.var.role`.
 
-**Important:** in the current kit, `verifyAccessJwt` is a **stub that throws** —
-port the WebCrypto RS256 verification (team JWKS) from the app's
-`src/worker/auth.ts` into the kit before relying on it, then delete the per-app
-copy so both apps share one. `teamDomain` / `audience` are env/config — never
-hard-code or bundle them (the published artifact is world-downloadable). Replacing
-a repo's existing local auth/types with the kit is a deliberate migration, not part
-of the basic prep above — do it as its own reviewed change.
+**Important:** `verifyAccessJwt` is **implemented** in `worker-kit` (WebCrypto
+RS256 against the team JWKS, validating `iss` / `aud` / `exp` / signature) — so a
+new app should rely on the kit rather than keep its own copy; delete any per-app
+`src/worker/auth.ts` verifier as a deliberate, separately-reviewed migration.
+`teamDomain` / `audience` are env/config — never hard-code or bundle them (the
+published artifact is world-downloadable). Replacing a repo's existing local
+auth/types with the kit is a migration, not part of the basic prep above — do it
+as its own reviewed change.
 
 ## Stay current
 
