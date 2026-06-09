@@ -175,6 +175,7 @@
 }
 
 /* ----------------------------------------------------------- APP SHELL ---- */
+.t10-shellwrap { padding: 18px 22px 60px; max-width: 1240px; margin: 0 auto; }
 .t10-shell { display: grid; grid-template-columns: var(--t10-sidebar-w) 1fr;
   background: var(--t10-surface); border: 1px solid var(--t10-line);
   border-radius: var(--t10-r); box-shadow: var(--t10-shadow); overflow: hidden; min-height: 560px; }
@@ -317,6 +318,61 @@
 .t10-section { font-family: var(--t10-font-display); font-size: 10px; font-weight: 700; letter-spacing: .15em;
   text-transform: uppercase; color: var(--t10-ink-faint); margin: 6px 0 11px; padding-bottom: 7px; border-bottom: 1px solid var(--t10-line-soft); }
 .t10-empty { padding: 48px 24px; text-align: center; color: var(--t10-ink-faint); font-size: var(--t10-fs-sm); }
+
+/* --------------------------------------------------------- RESPONSIVE ----- *
+   The back office is desktop-first (dense lists on wide screens), but leaders
+   live on phones at meetings and on trips. We deliberately keep ONE breakpoint
+   — phones, ≤760px — and resist adding a tablet tier until a screen proves it
+   needs one (more tiers = more ways to drift). Below it we stop the fixed side
+   columns from crushing the content: the shell stacks, the sidebar becomes a
+   horizontal scrollable nav strip, master/detail collapses, and the drawer goes
+   full-bleed. Tables keep their own x-scroll, so dense ledgers stay usable.
+
+   New multi-column layouts: add `.t10-stack-sm` to the grid container and it
+   collapses to a single column here for free — don't hand-roll a new query.
+   (CSS can't read a custom property inside a media condition, so the 760px
+   value is repeated in the query below; if you change the tier, change both.)  */
+.t10-stack-sm { /* desktop: author sets grid-template-columns as usual */ }
+@media (max-width: 760px) {
+  /* the shared single-column fallback for any opted-in grid */
+  .t10-stack-sm { grid-template-columns: 1fr !important; }
+}
+@media (max-width: 760px) {
+  /* tighter outer frame so the content gets the width back */
+  .t10-shellwrap { padding: 12px 12px 48px; }
+  .t10-topbar { height: 54px; gap: 12px; padding: 0 14px; }
+
+  /* stack: nav on top, page below */
+  .t10-shell { grid-template-columns: 1fr; min-height: 0; }
+
+  /* sidebar → horizontal, swipeable tab strip */
+  .t10-sidebar {
+    flex-direction: row; align-items: center; gap: 6px;
+    padding: 8px 10px; overflow-x: auto;
+    border-right: none; border-bottom: 1px solid var(--t10-line);
+    -webkit-overflow-scrolling: touch;
+  }
+  .t10-sidebar > div { display: flex; align-items: center; gap: 6px; }
+  .t10-sidebar > div + div { padding-left: 8px; margin-left: 2px; border-left: 1px solid var(--t10-line); }
+  .t10-sidebar__group { display: none; }                 /* group eyebrows are desktop-only context */
+  .t10-nav { width: auto; white-space: nowrap; padding: 7px 11px; }
+  .t10-nav__count { margin-left: 6px; }
+
+  /* headstrip: let the title + actions wrap instead of colliding */
+  .t10-headstrip { flex-wrap: wrap; padding: 13px var(--t10-s4); }
+
+  /* master/detail (Model 2) stacks; the list caps its height so detail is reachable */
+  .t10-split { grid-template-columns: 1fr; min-height: 0; }
+  .t10-split__list { border-right: none; border-bottom: 1px solid var(--t10-line); max-height: 45vh; }
+
+  /* slide-over (Model 3) goes full-bleed on a phone */
+  .t10-drawer { width: 100%; border-left: none; }
+
+  /* trim chrome that wastes vertical room on small screens */
+  .t10-tablefoot, .t10-toolbar { padding-left: var(--t10-s4); padding-right: var(--t10-s4); }
+  .t10-tablefoot { gap: var(--t10-s5); flex-wrap: wrap; }
+  .t10-cardgrid { padding: 14px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+}
 
 /* respect reduced motion */
 @media (prefers-reduced-motion: reduce) {
