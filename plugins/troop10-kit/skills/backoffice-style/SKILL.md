@@ -63,6 +63,19 @@ view**; destructive = `danger`), `StatusPill` (`tone=…`), `Field`, `SectionLab
 Plus `DataTable`, `Drawer` / `SplitView` / `OverlayHost`, `CommandPalette`,
 `ChangesetReview`, `AppShell`. Every page lives inside `AppShell` (topbar +
 role-aware sidebar); leader-only nav carries `leaderOnly`, filtered by `isLeader`.
+`Drawer` is built on Radix's headless `Dialog` (focus trap, focus restore,
+Escape/scrim dismissal, ARIA) — all styling stays in `t10-*` classes; its public
+API is unchanged.
+
+## Responsive
+
+Desktop-first, but leaders use it on phones. **One breakpoint — phones, ≤760px**
+(resist adding a tablet tier). The frame is responsive out of the box, no
+per-page work: `AppShell` stacks to one column and the sidebar becomes a
+horizontal swipeable nav strip; `SplitView` stacks list-over-detail; `Drawer`
+goes full-bleed; `DataTable` keeps its own horizontal scroll. For a **new
+multi-column layout**, add `.t10-stack-sm` to the grid container and it collapses
+to a single column at the breakpoint — don't hand-roll a media query.
 
 ## Do / Don't
 
@@ -71,11 +84,17 @@ per view; right-align + mono-render every number; gate edit UI on role *and*
 enforce on the Worker; preview any write not typed field-by-field; render real
 `EmptyState` / loading / error states.
 
-**Don't:** introduce a UI framework, CSS-in-JS, or a fourth font; add hues per
-feature or raw hex where a token exists; use clay for anything but the
-primary/destructive action; navigate to a new page just to edit one field; ship a
-delete with no confirm or a batch write with no diff.
+**Don't:** introduce a *styling* framework (Tailwind, MUI, Chakra…), CSS-in-JS,
+or a fourth font; add hues per feature or raw hex where a token exists; use clay
+for anything but the primary/destructive action; navigate to a new page just to
+edit one field; ship a delete with no confirm or a batch write with no diff.
+**Headless behavior** primitives (Radix, React Aria) are allowed — and preferred
+— for interaction correctness (focus trap, keyboard nav, ARIA), *as long as* all
+styling stays in `t10-*` classes/tokens. The rule is "no one else's CSS," not
+"no dependencies."
 
 When adding a component: use only `--t10-*` tokens, expose semantic tone props,
-be keyboard-operable with visible focus, work under `prefers-reduced-motion`, and
-add it to the STYLE.md catalog (§5) in the same PR.
+be keyboard-operable with visible focus — for dialogs/menus/tooltips/listboxes,
+build on a headless primitive (Radix/React Aria) rather than hand-rolling focus
+and ARIA — work under `prefers-reduced-motion`, and add it to the STYLE.md
+catalog (§5) in the same PR.
