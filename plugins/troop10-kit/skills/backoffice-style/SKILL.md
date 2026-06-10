@@ -61,8 +61,27 @@ Primitives: `Button` (`variant primary|default|ghost|danger` — **one primary p
 view**; destructive = `danger`), `StatusPill` (`tone=…`), `Field`, `SectionLabel`,
 `Avatar`, `Toolbar`/`SearchInput`/`FilterChip`/`ToolbarSpacer`, `EmptyState`.
 Plus `DataTable`, `Drawer` / `SplitView` / `OverlayHost`, `CommandPalette`,
-`ChangesetReview`, `AppShell`. Every page lives inside `AppShell` (topbar +
-role-aware sidebar); leader-only nav carries `leaderOnly`, filtered by `isLeader`.
+`ChangesetReview`, `AppShell`, `BackOfficeTopNav`.
+
+**`AppShell`** — the frame every page lives inside (topbar + sidebar + headstrip).
+Nav is **data-driven**: pass `nav` as `NavGroup[]` (eyebrow `label` + `items`) —
+you own the groups, order, membership, and nesting (`children`). Give each item an
+`href` so it renders a real `<a>` (middle-click, open-in-new-tab, native a11y);
+mark the current one with `active` (an id) or an `isActive` predicate (route-prefix
+matching). Compute visibility yourself with `hidden` (e.g. `hidden={!isLeader}`,
+derived from the `member_roles` role — *not* the raw OIDC claim); a hidden item
+drops its whole subtree. Set the topbar lockup with `brand={{ badge, title,
+subtitle }}`. *Legacy:* a flat `nav={[…]}` is still accepted (bucketed into the
+historical Operations/Roster id groups) and `leaderOnly` + `isLeader` still filter
+it — both are **deprecated**; prefer the grouped form + `hidden` for anything new.
+
+**`BackOfficeTopNav`** — the cross-app product switcher shared across the *whole*
+back office (Expenses · Gearlist · …). Render it identically in every app; pass
+only your own `active` id, the `user`, and the Access `logoutUrl`. The app list is
+the single source of truth in the kit (`BACK_OFFICE_APPS`) — never hand-maintain
+it; adding an app is a one-line kit edit + release. Apps are mounted same-origin
+under `/manage`, so these are plain in-page links (no router dependency).
+
 `Drawer` is built on Radix's headless `Dialog` (focus trap, focus restore,
 Escape/scrim dismissal, ARIA) — all styling stays in `t10-*` classes; its public
 API is unchanged.

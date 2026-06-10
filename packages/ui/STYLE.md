@@ -250,6 +250,27 @@ proposes the change.
 />
 ```
 
+### `BackOfficeTopNav` — cross-app product switcher — `BackOfficeTopNav.tsx`
+
+The bar shared across the *whole* back office (Expenses · Gearlist · …), rendered
+identically by every app. The app list lives **here** in the kit
+(`BACK_OFFICE_APPS`) — the single source of truth. A consuming app passes only its
+own `active` id, the signed-in `user`, and the Access `logoutUrl`; it never
+hand-maintains the list. Adding a back-office app is a one-line edit to
+`BACK_OFFICE_APPS` plus a kit release. Apps mount same-origin under `/manage`, so
+the entries are plain in-page links (no router dependency).
+
+```tsx
+<BackOfficeTopNav
+  active="gearlist"                       // matches a BACK_OFFICE_APPS id
+  user={{ name: identity.name, role: positionLabel }}
+  logoutUrl={accessLogoutUrl}
+/>
+```
+
+This is the product-switcher chrome *above* the app; `AppShell` (§6) is the
+per-app frame (brand + sidebar + headstrip) that sits beneath it.
+
 ---
 
 ## 6. Layout & page skeleton
