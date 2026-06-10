@@ -1,6 +1,6 @@
 {
   "name": "@troop10rwc/shared",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "type": "module",
   "description": "Types and contracts shared by the React client and the Cloudflare Worker.",
   "files": [
