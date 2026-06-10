@@ -259,6 +259,10 @@
 .t10-nav__count { margin-left: auto; font-family: var(--t10-font-mono); font-size: 10px;
   background: var(--t10-clay); color: #fff; padding: 1px 6px; border-radius: 20px; }
 .t10-nav--active .t10-nav__count { background: rgba(255,255,255,.22); }
+/* Nested sub-items (NavItem.children) read as quieter, indented children of the
+   row above; horizontal-indent comes from an inline padding-left per depth. */
+.t10-nav--child { font-size: calc(var(--t10-fs-sm) - .5px); color: var(--t10-ink-soft); }
+.t10-nav--child.t10-nav--active { color: #f3f0e6; }
 
 .t10-main { display: flex; flex-direction: column; min-width: 0; }
 .t10-headstrip { display: flex; align-items: center; gap: var(--t10-s4); padding: 15px var(--t10-s5);
