@@ -1,6 +1,6 @@
 {
   "name": "@troop10rwc/worker-kit",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "type": "module",
   "description": "Shared Cloudflare Worker building blocks: Access JWT verification, roster roles, Hono middleware.",
   "files": [
