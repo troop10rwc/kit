@@ -14,3 +14,4 @@ export * from "./Drawer";
 export * from "./CommandPalette";
 export * from "./ChangesetReview";
 export * from "./AppShell";
+export * from "./BackOfficeTopNav";
