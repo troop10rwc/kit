@@ -254,33 +254,41 @@ proposes the change.
 
 ## 6. Layout & page skeleton
 
-Every page lives inside `AppShell` (topbar + role-aware sidebar + headstrip).
-Leader-only sections (e.g. **Roster**) carry `leaderOnly` and are filtered by
-`isLeader`, which you derive from the `member_roles`-driven role — *not* the raw
-OIDC claim (see `src/worker/roster.ts`).
+Every page lives inside `AppShell` (topbar + sidebar + headstrip). You own the
+nav as data: groups, order, membership, nesting, brand, and visibility. Give each
+item an `href` so it renders as a real link (middle-click, open-in-new-tab, native
+a11y); set `active` (or an `isActive` predicate for route-prefix matching) to mark
+the current one. Compute visibility yourself with `hidden` — e.g. derive leader
+status from the `member_roles` role, *not* the raw OIDC claim (see
+`src/worker/roster.ts`), and pass `hidden={!isLeader}`.
 
 ```tsx
 <AppShell
-  active={page} onNavigate={setPage}
-  isLeader={role === "leader"}
+  active={page}
+  brand={{ badge: "T10", title: "Gearlist", subtitle: "Back Office · RWC" }}
   user={{ name: identity.name, role: positionLabel }}
   title="Closet — Troop Gear" subtitle={`${items.length} items`}
   actions={<Button variant="primary">+ New item</Button>}
   nav={[
-    { id: "closet",    label: "Closet",    icon: "⛺", count: items.length },
-    { id: "lists",     label: "Packing Lists", icon: "◧" },
-    { id: "templates", label: "Templates", icon: "▤" },
-    { id: "trips",     label: "Trips",     icon: "▲" },
-    { id: "roster",    label: "Roster",    icon: "◉", leaderOnly: true },
-    { id: "settings",  label: "Settings",  icon: "⚙", leaderOnly: true },
+    { label: "Operations", items: [
+      { id: "closet",    label: "Closet",    icon: "⛺", href: "#/closet", count: items.length },
+      { id: "lists",     label: "Packing Lists", icon: "◧", href: "#/",
+        children: [{ id: "event:626", label: "Summer Camp", href: "#/event/626" }] },
+      { id: "templates", label: "Templates", icon: "▤", href: "#/templates" },
+    ]},
+    { label: "Roster", items: [
+      { id: "roster",   label: "Roster",   icon: "◉", href: "#/roster",   hidden: !isLeader },
+      { id: "settings", label: "Settings", icon: "⚙", href: "#/settings", hidden: !isLeader },
+    ]},
   ]}
 >
   {/* page content: a DataTable, a SplitView, cards + Drawer, … */}
 </AppShell>
 ```
 
-Since there's no router library, `page` is your own state; the sidebar drives it.
-Keep the `id`s aligned with whatever client-side gating you already use.
+A flat `nav={[…]}` (no groups) is still accepted: items are bucketed into the
+historical Operations/Roster id groups and `leaderOnly`/`isLeader` still filter
+them. Prefer the grouped form above for anything new.
 
 ### Responsive
 
