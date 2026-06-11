@@ -1,7 +1,14 @@
 import { defineConfig } from "tsup";
 
 export default defineConfig({
-  entry: ["src/index.ts"],
+  entry: {
+    index: "src/index.ts",
+    // Namespaced Font Awesome (free) icon packs, so a consumer's only dependency
+    // is the kit: `import { faTent } from "@troop10rwc/ui/icons/solid"`.
+    "icons/solid": "src/icons-solid.ts",
+    "icons/regular": "src/icons-regular.ts",
+    "icons/brands": "src/icons-brands.ts",
+  },
   format: ["esm"],
   dts: true,
   target: "es2022",

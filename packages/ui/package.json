@@ -17,6 +17,18 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./icons/solid": {
+      "types": "./dist/icons/solid.d.ts",
+      "import": "./dist/icons/solid.js"
+    },
+    "./icons/regular": {
+      "types": "./dist/icons/regular.d.ts",
+      "import": "./dist/icons/regular.js"
+    },
+    "./icons/brands": {
+      "types": "./dist/icons/brands.d.ts",
+      "import": "./dist/icons/brands.js"
+    },
     "./theme.css": "./theme.css",
     "./fonts.css": "./fonts.css"
   },
@@ -33,6 +45,11 @@
     "@fontsource-variable/archivo": "^5.1.0",
     "@fontsource-variable/hanken-grotesk": "^5.1.0",
     "@fontsource/ibm-plex-mono": "^5.1.0",
+    "@fortawesome/fontawesome-svg-core": "^7.2.0",
+    "@fortawesome/free-brands-svg-icons": "^7.2.0",
+    "@fortawesome/free-regular-svg-icons": "^7.2.0",
+    "@fortawesome/free-solid-svg-icons": "^7.2.0",
+    "@fortawesome/react-fontawesome": "^3.3.1",
     "@radix-ui/react-dialog": "^1.1.6"
   },
   "devDependencies": {

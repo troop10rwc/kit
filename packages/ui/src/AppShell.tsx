@@ -7,16 +7,20 @@ import type { ReactNode } from "react";
    <div className="t10-app"> once (AppShell does this).
 
    Nav is data-driven. Prefer the grouped form — you own the group labels, order,
-   membership, nesting, and visibility:
+   membership, nesting, and visibility. Icons are Font Awesome (free) — render an
+   <Icon> from a pack definition rather than an emoji/unicode glyph:
+
+     import { Icon } from "@troop10rwc/ui";
+     import { faCalendarDays, faTent, faUsers } from "@troop10rwc/ui/icons/solid";
 
      nav={[
        { label: "Operations", items: [
-         { id: "lists", label: "Upcoming", icon: "◧", href: "#/",
+         { id: "lists", label: "Upcoming", icon: <Icon icon={faCalendarDays} />, href: "#/",
            children: [{ id: "event:626", label: "Summer Camp", href: "#/event/626" }] },
-         { id: "closet", label: "Closet", icon: "⛺", href: "#/closet" },
+         { id: "closet", label: "Closet", icon: <Icon icon={faTent} />, href: "#/closet" },
        ]},
        { label: "Roster", items: [
-         { id: "roster", label: "Roster", icon: "◉", href: "#/roster", hidden: !isLeader },
+         { id: "roster", label: "Roster", icon: <Icon icon={faUsers} />, href: "#/roster", hidden: !isLeader },
        ]},
      ]}
 

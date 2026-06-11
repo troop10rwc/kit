@@ -1,4 +1,6 @@
 import type { ReactNode, InputHTMLAttributes, ButtonHTMLAttributes } from "react";
+import { Icon } from "./Icon";
+import { faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
 
 /* ============================================================================
    scoutpack/ui · primitives.tsx
@@ -86,7 +88,7 @@ interface SearchProps extends InputHTMLAttributes<HTMLInputElement> {}
 export function SearchInput({ placeholder = "Search…", ...rest }: SearchProps) {
   return (
     <div className="t10-search">
-      <span aria-hidden>⌕</span>
+      <Icon icon={faMagnifyingGlass} aria-hidden />
       <input type="search" placeholder={placeholder} {...rest} />
     </div>
   );

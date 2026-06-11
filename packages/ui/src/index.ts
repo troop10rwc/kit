@@ -5,9 +5,14 @@
 
      import "@troop10rwc/ui/fonts.css";
      import "@troop10rwc/ui/theme.css";
-     import { AppShell, DataTable, Drawer } from "@troop10rwc/ui";
+     import { AppShell, DataTable, Drawer, Icon } from "@troop10rwc/ui";
+     import { faTent } from "@troop10rwc/ui/icons/solid";
+
+   Icons are Font Awesome (free) SVGs rendered by <Icon>; the icon definitions
+   live on the namespaced packs "@troop10rwc/ui/icons/{solid,regular,brands}".
    ========================================================================== */
 
+export * from "./Icon";
 export * from "./primitives";
 export * from "./DataTable";
 export * from "./Drawer";

@@ -59,6 +59,18 @@ on every page load. All components live under `src/ui/` and import only
 `theme.css` class names — no CSS-in-JS, no UI framework, consistent with the
 hand-written-CSS choice.
 
+**Icons need no entry import.** They ship with the kit as Font Awesome (free)
+inline SVGs — no webfont, no icon stylesheet, nothing to add to `main.tsx`.
+Render an `<Icon>` and pull the definition from a namespaced pack:
+
+```ts
+import { Icon } from "@troop10rwc/ui";
+import { faTent } from "@troop10rwc/ui/icons/solid"; // also /regular, /brands
+```
+
+The kit re-exports the free packs, so it stays your only dependency — don't
+install `@fortawesome/*` yourself. See §"Icons" below for when and how to use them.
+
 ---
 
 ## 3. Design tokens
@@ -95,6 +107,42 @@ Three families, each with a job. **Do not** reach for a fourth.
 
 Scale: `--t10-fs-xs … -xl` (11 → 22px). Labels use the `.t10-label` recipe
 (uppercase, tracked, faint). Space scale `--t10-s1 … -s6`. Radii `--t10-r-sm/r/-lg`.
+
+### Icons
+
+One icon vocabulary: **Font Awesome (free)**, rendered as inline SVG by `<Icon>`.
+**Use an icon whenever a glyph clarifies an action or row** — nav items, buttons,
+toolbar affordances, empty states, inline status — and prefer it over a bare text
+label where a recognizable mark speeds scanning. This is a deliberate default,
+not decoration: the list is the home (§1), and a consistent leading glyph is one
+of the cheapest ways to make a long list scannable.
+
+```tsx
+import { Icon } from "@troop10rwc/ui";
+import { faTent, faPlus, faTriangleExclamation } from "@troop10rwc/ui/icons/solid";
+
+<Icon icon={faTent} />
+<Button variant="primary"><Icon icon={faPlus} /> New item</Button>
+```
+
+Rules:
+
+- **`<Icon>` only — never an emoji or unicode glyph** (`⛺ ◧ ⌕ ◉ ⚙`). Those render
+  differently on every OS and ignore the tokens; `<Icon>` is one mark everywhere.
+- **Solid is the default style** (`/icons/solid`). Reach for `/icons/regular`
+  (outline) only when you specifically want the lighter weight, and `/icons/brands`
+  for third-party logos (GitHub, Google).
+- **Tone, not color (§1.5).** Icons paint with `currentColor` and size to `1em`,
+  so they inherit the surrounding text's `--t10` color and font-size for free.
+  Set the *parent's* color (e.g. a `StatusPill`'s tone) — never hard-code an
+  icon's fill or px size. `<Icon>` defaults to `fixedWidth` so glyphs align in
+  columns and nav.
+- **Decorative vs. meaningful.** An icon paired with a text label is decorative —
+  pass `aria-hidden`. An icon that stands alone (an icon-only button) needs an
+  accessible name on the control (`aria-label`), per §9.
+- **Stay in the free set.** Don't pull in Pro packs or one-off SVGs; if a needed
+  concept has no free icon, pick the closest free glyph and note it, or add a
+  shared mapping rather than scattering custom SVGs.
 
 ### Motion & a11y
 
@@ -149,6 +197,24 @@ There is **one** primary button per view. Destructive actions use
 ```ts
 const conditionTone = { good: "ok", worn: "warn", retire: "alert", onloan: "info" } as const;
 ```
+
+### `Icon` — the icon primitive — `Icon.tsx`
+
+A thin wrapper over Font Awesome's free SVG renderer. It's the only way icons
+enter the system (see §3 → Icons). Definitions come from the namespaced packs;
+the kit re-exports them so you take no `@fortawesome/*` dependency directly.
+
+```tsx
+import { Icon } from "@troop10rwc/ui";
+import { faTent, faTrash } from "@troop10rwc/ui/icons/solid";
+
+<Icon icon={faTent} aria-hidden />                 {/* decorative, beside a label */}
+<button className="t10-btn" aria-label="Retire"><Icon icon={faTrash} /></button>
+```
+
+`fixedWidth` is on by default; `currentColor` + `1em` sizing mean it inherits
+color and scale from context — don't pass a hex fill or px size. For layered or
+animated icons, the underlying `FontAwesomeIcon` is re-exported from the kit too.
 
 ### `DataTable` — Model 1 (the workhorse)
 
@@ -284,22 +350,25 @@ status from the `member_roles` role, *not* the raw OIDC claim (see
 `src/worker/roster.ts`), and pass `hidden={!isLeader}`.
 
 ```tsx
+import { Icon } from "@troop10rwc/ui";
+import { faTent, faClipboardList, faTableList, faUsers, faGear, faPlus } from "@troop10rwc/ui/icons/solid";
+
 <AppShell
   active={page}
   brand={{ badge: "T10", title: "Gearlist", subtitle: "Back Office · RWC" }}
   user={{ name: identity.name, role: positionLabel }}
   title="Closet — Troop Gear" subtitle={`${items.length} items`}
-  actions={<Button variant="primary">+ New item</Button>}
+  actions={<Button variant="primary"><Icon icon={faPlus} /> New item</Button>}
   nav={[
     { label: "Operations", items: [
-      { id: "closet",    label: "Closet",    icon: "⛺", href: "#/closet", count: items.length },
-      { id: "lists",     label: "Packing Lists", icon: "◧", href: "#/",
+      { id: "closet",    label: "Closet",    icon: <Icon icon={faTent} />, href: "#/closet", count: items.length },
+      { id: "lists",     label: "Packing Lists", icon: <Icon icon={faClipboardList} />, href: "#/",
         children: [{ id: "event:626", label: "Summer Camp", href: "#/event/626" }] },
-      { id: "templates", label: "Templates", icon: "▤", href: "#/templates" },
+      { id: "templates", label: "Templates", icon: <Icon icon={faTableList} />, href: "#/templates" },
     ]},
     { label: "Roster", items: [
-      { id: "roster",   label: "Roster",   icon: "◉", href: "#/roster",   hidden: !isLeader },
-      { id: "settings", label: "Settings", icon: "⚙", href: "#/settings", hidden: !isLeader },
+      { id: "roster",   label: "Roster",   icon: <Icon icon={faUsers} />, href: "#/roster",   hidden: !isLeader },
+      { id: "settings", label: "Settings", icon: <Icon icon={faGear} />, href: "#/settings", hidden: !isLeader },
     ]},
   ]}
 >
@@ -363,10 +432,14 @@ there and update this section in the same PR.
 - Compose existing components; add tokens before values.
 - One primary (clay) action per view.
 - Right-align and mono-render every number.
+- Use a Font Awesome (free) `<Icon>` wherever a glyph aids scanning, and let it
+  inherit color + size from context.
 - Gate edit UI on role *and* enforce on the Worker.
 - Preview any write the user didn't type field-by-field.
 
 **Don't**
+- Place an emoji or unicode glyph (`⛺ ⌕ ◧ ◉`) as an icon, hard-code an icon's
+  color/size, or hand-roll a one-off SVG — use `<Icon>` from the free packs.
 - Introduce a *styling* framework (Tailwind, MUI, Chakra…), CSS-in-JS, or a
   fourth font. **Headless behavior** primitives (Radix, React Aria) are allowed
   — and preferred — for interaction correctness (focus trap, keyboard nav, ARIA)
@@ -387,5 +460,7 @@ dialogs/menus/tooltips/listboxes, build on a headless primitive (Radix/React
 Aria) rather than hand-rolling focus and ARIA — (d) work
 under `prefers-reduced-motion`, and (e) get a row in §5 plus, if it changes the
 decision space, §4. New status meaning → add a tone mapping, not a new pill color.
+Any glyph it shows is a Font Awesome (free) `<Icon>` — decorative ones get
+`aria-hidden`, and an icon-only control gets an `aria-label`.
 
 *This guide and `src/ui/` are the source of truth. Treat drift as a bug.*
