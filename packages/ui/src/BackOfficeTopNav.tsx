@@ -20,8 +20,10 @@ export interface BackOfficeApp {
 /** The canonical roster of back-office apps, in nav order. Single source of
  *  truth — see the file header before editing. */
 export const BACK_OFFICE_APPS: BackOfficeApp[] = [
-  { id: "expenses", label: "Expenses", href: "/manage/expenses" },
+  { id: "calendar", label: "Calendar", href: "/manage/calendar" },
   { id: "gearlist", label: "Gearlist", href: "/manage/gearlist" },
+  { id: "expenses", label: "Expenses", href: "/manage/expenses" },
+  { id: "roster", label: "Roster", href: "/manage/roster" },
 ];
 
 interface BackOfficeTopNavProps {
