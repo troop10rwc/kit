@@ -64,8 +64,14 @@ interface AppShellProps {
   isActive?: (item: NavItem) => boolean;
   /** Fires on click. For `href` items the browser also navigates. */
   onNavigate?: (id: string, item: NavItem) => void;
-  /** Topbar brand lockup. Defaults to the scoutpack mark for back-compat. */
+  /** Topbar brand lockup. Defaults to the scoutpack mark for back-compat.
+   *  Ignored when `appSwitcher` is supplied. */
   brand?: BrandSpec;
+  /** Renders in place of the default topbar — pass <BackOfficeTopNav> here to
+   *  make the shared cross-app product switcher the single top bar (the two
+   *  bars are both sticky pine and would otherwise collide). When set, `brand`
+   *  and `user` are unused. Omit it for the standalone topbar (back-compat). */
+  appSwitcher?: ReactNode;
   /** Legacy role gate for `leaderOnly` items in flat-`nav` mode. */
   isLeader?: boolean;
   user?: { name: string; role?: string };
@@ -163,29 +169,31 @@ function NavNode({
 }
 
 export function AppShell({
-  nav, active, isActive, onNavigate, brand, isLeader = false, user, title, subtitle, actions, children,
+  nav, active, isActive, onNavigate, brand, appSwitcher, isLeader = false, user, title, subtitle, actions, children,
 }: AppShellProps) {
   const groups = toGroups(nav, isLeader);
   const b = brand ?? DEFAULT_BRAND;
 
   return (
     <div className="t10-app">
-      <div className="t10-topbar">
-        <div className="t10-brand">
-          {b.badge != null && <div className="t10-brand__badge">{b.badge}</div>}
-          <div>
-            {b.title}
-            {b.subtitle != null && (
-              <small style={{ display: "block", fontFamily: "var(--t10-font-body)", fontWeight: 500, fontSize: 10, letterSpacing: ".22em", color: "#9fb6a3", textTransform: "uppercase", marginTop: -2 }}>
-                {b.subtitle}
-              </small>
-            )}
+      {appSwitcher ?? (
+        <div className="t10-topbar">
+          <div className="t10-brand">
+            {b.badge != null && <div className="t10-brand__badge">{b.badge}</div>}
+            <div>
+              {b.title}
+              {b.subtitle != null && (
+                <small style={{ display: "block", fontFamily: "var(--t10-font-body)", fontWeight: 500, fontSize: 10, letterSpacing: ".22em", color: "#9fb6a3", textTransform: "uppercase", marginTop: -2 }}>
+                  {b.subtitle}
+                </small>
+              )}
+            </div>
+          </div>
+          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 14, fontSize: 12, color: "#dfe6da" }}>
+            {user && <span>{user.name}{user.role ? ` · ${user.role}` : ""}</span>}
           </div>
         </div>
-        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 14, fontSize: 12, color: "#dfe6da" }}>
-          {user && <span>{user.name}{user.role ? ` · ${user.role}` : ""}</span>}
-        </div>
-      </div>
+      )}
 
       <div className="t10-shellwrap">
         <div className="t10-shell">
