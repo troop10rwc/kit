@@ -317,20 +317,22 @@ body { background-color: var(--t10-paper); }
 /* --------------------------------------------------------------- DRAWER --- *
    Slide-over inspector (Model 3): edit while the list stays put behind a scrim. */
 .t10-overlayhost { position: relative; }
-/* Drawer force-mounts its Radix overlay (so the slide stays class-driven), and
-   Radix stamps an inline `pointer-events: auto` on it even while closed. That
-   inline style beats a plain class rule, so the invisible closed scrim would
-   swallow every click across the OverlayHost region. The `!important` here wins
-   the cascade back so the closed scrim is click-through; `--show` re-enables it
-   (also `!important`, and later in source, so it wins when open). */
-.t10-scrim { position: absolute; inset: 0; background: rgba(27,33,24,.32);
-  opacity: 0; pointer-events: none !important; transition: opacity .2s var(--t10-ease); z-index: 10; }
-.t10-scrim--show { opacity: 1; pointer-events: auto !important; }
+/* The Drawer mounts only while open (Radix Presence drives the enter/exit via
+   these data-state animations), so a closed drawer is simply absent — no stuck
+   scroll-lock, no click-swallowing scrim. The closing element is non-interactive
+   while it animates out. */
+.t10-scrim { position: absolute; inset: 0; background: rgba(27,33,24,.32); z-index: 10; }
+.t10-scrim[data-state="open"]   { animation: t10-scrim-in  .2s var(--t10-ease); }
+.t10-scrim[data-state="closed"] { animation: t10-scrim-out .2s var(--t10-ease); pointer-events: none; }
+@keyframes t10-scrim-in  { from { opacity: 0 } to { opacity: 1 } }
+@keyframes t10-scrim-out { from { opacity: 1 } to { opacity: 0 } }
 .t10-drawer { position: absolute; top: 0; right: 0; bottom: 0; width: var(--t10-drawer-w);
   background: var(--t10-surface); z-index: 11; box-shadow: var(--t10-shadow-lg);
-  transform: translateX(100%); transition: transform .26s var(--t10-ease);
   display: flex; flex-direction: column; border-left: 3px solid var(--t10-clay); }
-.t10-drawer--open { transform: none; }
+.t10-drawer[data-state="open"]   { animation: t10-drawer-in  .26s var(--t10-ease); }
+.t10-drawer[data-state="closed"] { animation: t10-drawer-out .26s var(--t10-ease); pointer-events: none; }
+@keyframes t10-drawer-in  { from { transform: translateX(100%) } to { transform: none } }
+@keyframes t10-drawer-out { from { transform: none } to { transform: translateX(100%) } }
 .t10-drawer__head { padding: 18px 20px; border-bottom: 1px solid var(--t10-line); display: flex; align-items: center; gap: var(--t10-s3); }
 .t10-drawer__close { margin-left: auto; font-size: 20px; color: var(--t10-ink-faint);
   width: 30px; height: 30px; border-radius: var(--t10-r-sm); border: none; background: none; }

@@ -12,9 +12,11 @@ import * as Dialog from "@radix-ui/react-dialog";
    own `t10-*` CSS and tokens, and Radix owns the *behavior* that's tedious and
    error-prone to hand-roll — focus trap, focus restore on close, Escape + scrim
    dismissal, and the dialog ARIA wiring. We deliberately render WITHOUT a portal
-   so the dialog overlays the OverlayHost region (Model 3 "edit in context"),
-   not the whole viewport, and we `forceMount` so the slide-in/out transition
-   stays driven by our `--open` / `--show` classes.
+   so the dialog overlays the OverlayHost region (Model 3 "edit in context"), not
+   the whole viewport. The enter/exit slide is driven by Radix Presence + the
+   `[data-state]` keyframe animations in theme.css; the overlay/content mount only
+   while open, so a closed drawer never leaves a scroll-lock or click-blocking
+   scrim behind.
    ========================================================================== */
 
 export function OverlayHost({ children }: { children: ReactNode }) {
@@ -33,15 +35,9 @@ interface DrawerProps {
 export function Drawer({ open, onClose, title, subtitle, avatar, footer, children }: DrawerProps) {
   return (
     <Dialog.Root open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
-      <Dialog.Overlay
-        forceMount
-        className={"t10-scrim" + (open ? " t10-scrim--show" : "")}
-      />
+      <Dialog.Overlay className="t10-scrim" />
       <Dialog.Content
-        forceMount
-        className={"t10-drawer" + (open ? " t10-drawer--open" : "")}
-        /* keep the closed (off-screen) drawer out of the tab order */
-        inert={open ? undefined : true}
+        className="t10-drawer"
         /* no body content describes the dialog; opt out of the a11y warning */
         aria-describedby={undefined}
       >
