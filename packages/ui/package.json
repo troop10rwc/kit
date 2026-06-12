@@ -1,6 +1,6 @@
 {
   "name": "@troop10rwc/ui",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "type": "module",
   "description": "Troop 10 back-office component library + design tokens (the five interaction models).",
   "sideEffects": [
