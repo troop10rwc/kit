@@ -144,6 +144,24 @@ Rules:
   concept has no free icon, pick the closest free glyph and note it, or add a
   shared mapping rather than scattering custom SVGs.
 
+**Shared vocabulary.** One concept, one mark — reuse these across apps so a glyph
+means the same thing everywhere. Reach for the closest entry before inventing a
+new association, and extend the table (in a PR) rather than diverging. All solid
+(`/icons/solid`).
+
+| Concept | Icon | Typical use |
+|---|---|---|
+| Youth / scouts | `faPersonHiking` | youth nav + lists |
+| Adults / leaders | `faPeopleGroup` | adult nav + lists |
+| Roles / access | `faUserShield` | role + permission views |
+| Edit a person | `faUserPen` | set override, edit member |
+| Link an account | `faLink` | Slack / account association |
+| Unlink | `faLinkSlash` | break an association |
+| Tokens / secrets | `faKey` | export tokens, API keys |
+| Add / create | `faPlus` | "New …" / "Create …" actions |
+| Revoke / disable | `faBan` | revoke token, disable access |
+| Preview / scan | `faMagnifyingGlass` | dry-run, search actions |
+
 ### Motion & a11y
 
 Transitions use `--t10-dur` + `--t10-ease`. Focus is always visible
