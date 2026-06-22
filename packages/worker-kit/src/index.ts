@@ -1,4 +1,5 @@
 import type { MiddlewareHandler } from "hono";
+import { getCookie } from "hono/cookie";
 import { LEADER_POSITIONS, type Identity, type Position, type Role } from "@troop10rwc/shared";
 
 /* ============================================================================
@@ -210,6 +211,151 @@ export function withAuth(deps: AuthDeps): MiddlewareHandler {
 export function requireLeader(): MiddlewareHandler {
   return async (c, next) => {
     if (c.get("role") !== "leader") return c.json({ error: "leader role required" }, 403);
+    return next();
+  };
+}
+
+/* ============================================================================
+   Member sessions — Slack-enrollment + passkey auth (replaces Cloudflare Access)
+
+   The auth Worker (auth.troop10rwc.org) mints an opaque session token, stores a
+   row in D1, and sets it as the shared `__Secure-troop_session` cookie scoped to
+   the parent domain. Every app Worker validates with `requireSession`, which
+   looks the token up in the SAME D1 (Option B — strongly consistent, instant
+   revocation). The auth Worker itself is built separately; this is the reusable
+   middleware app Workers consume, plus the canonical cookie/lookup contracts so
+   issuer and verifier can't drift.
+   ========================================================================== */
+
+const nowSeconds = () => Math.floor(Date.now() / 1000);
+
+/** Identity carried by a validated session. `sub` is the Slack OIDC `sub` (the
+ *  stable member id); name/email are best-effort display fields from `users`. */
+export interface SessionIdentity {
+  sub: string;
+  name?: string;
+  email?: string;
+}
+
+/** Hono env augmentation so handlers can read `c.var.session`. */
+export interface SessionVariables {
+  Variables: { session: SessionIdentity };
+}
+
+/* ---- Session cookie (the §7 contract — issuer and verifier share it) ------ *
+   __Secure- prefix (NOT __Host-, which forbids Domain and would defeat SSO),
+   Domain=parent so the cookie reaches every subdomain, SameSite=Lax so the
+   app→auth→app redirect bounce carries it.                                     */
+
+export const SESSION_COOKIE_NAME = "__Secure-troop_session";
+/** Parent registrable domain the cookie is scoped to (SSO across subdomains). */
+export const SESSION_COOKIE_DOMAIN = "troop10rwc.org";
+/** Default session lifetime: 12h. Passkey re-auth is one tap, so short is cheap. */
+export const SESSION_MAX_AGE = 43200;
+
+export interface SessionCookieOptions {
+  /** Parent domain for SSO. Defaults to `SESSION_COOKIE_DOMAIN`. */
+  domain?: string;
+  /** Lifetime in seconds. Defaults to `SESSION_MAX_AGE`. */
+  maxAge?: number;
+}
+
+/** Build the `Set-Cookie` value the auth Worker uses to issue a session. */
+export function buildSessionCookie(token: string, opts: SessionCookieOptions = {}): string {
+  const domain = opts.domain ?? SESSION_COOKIE_DOMAIN;
+  const maxAge = opts.maxAge ?? SESSION_MAX_AGE;
+  return `${SESSION_COOKIE_NAME}=${token}; Domain=${domain}; Path=/; Secure; HttpOnly; SameSite=Lax; Max-Age=${maxAge}`;
+}
+
+/** Build the `Set-Cookie` value that clears the session (logout / offboarding). */
+export function clearSessionCookie(opts: { domain?: string } = {}): string {
+  const domain = opts.domain ?? SESSION_COOKIE_DOMAIN;
+  return `${SESSION_COOKIE_NAME}=; Domain=${domain}; Path=/; Secure; HttpOnly; SameSite=Lax; Max-Age=0`;
+}
+
+/* ---- D1 session lookup (Option B) ----------------------------------------- *
+   The canonical query lives here so every app agrees on it. LEFT JOIN so a
+   session still validates if the `users` row is ever absent; expiry is enforced
+   in code (D1 has no clock predicate we want to rely on here).                 */
+
+interface SessionRow {
+  sub: string;
+  expires_at: number;
+  name: string | null;
+  email: string | null;
+}
+
+/**
+ * Build a session resolver bound to a D1 database. Returns the member identity
+ * for a live token, or `null` when the token is unknown or expired. Bind the
+ * SAME D1 the auth Worker writes to (Option B requires shared, consistent state).
+ */
+export function d1SessionLookup(db: D1Database): (token: string) => Promise<SessionIdentity | null> {
+  return async (token) => {
+    const row = await db
+      .prepare(
+        "SELECT s.slack_sub AS sub, s.expires_at AS expires_at, u.name AS name, u.email AS email " +
+          "FROM sessions s LEFT JOIN users u ON u.slack_sub = s.slack_sub WHERE s.id = ?",
+      )
+      .bind(token)
+      .first<SessionRow>();
+    if (!row) return null;
+    if (!row.expires_at || row.expires_at < nowSeconds()) return null;
+    return { sub: row.sub, name: row.name ?? undefined, email: row.email ?? undefined };
+  };
+}
+
+export interface RequireSessionDeps {
+  /** Auth Worker origin for the login redirect, e.g. "https://auth.troop10rwc.org". */
+  authOrigin: string;
+  /** D1 binding; used to build the default lookup when `lookup` is omitted. */
+  db?: D1Database;
+  /** Custom resolver. Defaults to `d1SessionLookup(db)`. Provide one of `db`/`lookup`. */
+  lookup?: (token: string) => Promise<SessionIdentity | null>;
+  /** Cookie name. Defaults to `SESSION_COOKIE_NAME`. */
+  cookieName?: string;
+  /**
+   * Response for an unauthenticated request:
+   * - "redirect" (default): 302 to `${authOrigin}/login?redirect=<current url>` — HTML Workers.
+   * - "json": 401 `{ error: "unauthorized" }` — API/fetch Workers.
+   */
+  onUnauthenticated?: "redirect" | "json";
+  /** Local-dev escape hatch (DEV_AUTH_BYPASS=1). */
+  devBypass?: SessionIdentity;
+}
+
+/**
+ * Middleware that validates the session cookie and attaches the identity to
+ * `c.var.session`. Fails closed: a missing/unknown/expired token — or a lookup
+ * error — is treated as unauthenticated. Swap this in for `withAuth` once an app
+ * moves off Cloudflare Access.
+ */
+export function requireSession(deps: RequireSessionDeps): MiddlewareHandler {
+  const cookieName = deps.cookieName ?? SESSION_COOKIE_NAME;
+  const authOrigin = deps.authOrigin.replace(/\/$/, "");
+  const lookup = deps.lookup ?? (deps.db ? d1SessionLookup(deps.db) : null);
+  if (!lookup) throw new Error("requireSession: provide either `db` or `lookup`");
+
+  return async (c, next) => {
+    if (deps.devBypass) {
+      c.set("session", deps.devBypass);
+      return next();
+    }
+    const token = getCookie(c, cookieName);
+    let session: SessionIdentity | null = null;
+    if (token) {
+      try {
+        session = await lookup(token);
+      } catch {
+        session = null; // fail closed
+      }
+    }
+    if (!session) {
+      if (deps.onUnauthenticated === "json") return c.json({ error: "unauthorized" }, 401);
+      const back = encodeURIComponent(c.req.url);
+      return c.redirect(`${authOrigin}/login?redirect=${back}`, 302);
+    }
+    c.set("session", session);
     return next();
   };
 }

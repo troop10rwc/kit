@@ -2,9 +2,16 @@ import { Hono } from "hono";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   type AuthVariables,
+  type SessionIdentity,
+  type SessionVariables,
+  buildSessionCookie,
+  clearSessionCookie,
+  d1SessionLookup,
   getAccessGroups,
   requireLeader,
+  requireSession,
   roleForPosition,
+  SESSION_COOKIE_NAME,
   verifyAccessJwt,
   withAuth,
 } from "./index.js";
@@ -460,5 +467,170 @@ describe("requireLeader", () => {
     const res = await appWithRole("scout").request("/leader-only");
     expect(res.status).toBe(403);
     expect(await res.json()).toEqual({ error: "leader role required" });
+  });
+});
+
+/* -------------------------- session cookie helpers ---------------------- */
+
+describe("session cookie helpers", () => {
+  it("buildSessionCookie uses the __Secure- prefix with a Domain (SSO, not __Host-)", () => {
+    const c = buildSessionCookie("tok123");
+    expect(c).toMatch(/^__Secure-troop_session=tok123;/);
+    expect(c).not.toContain("__Host-");
+    expect(c).toContain("Domain=troop10rwc.org");
+    expect(c).toContain("Path=/");
+    expect(c).toContain("Secure");
+    expect(c).toContain("HttpOnly");
+    expect(c).toContain("SameSite=Lax");
+    expect(c).toContain("Max-Age=43200");
+  });
+
+  it("buildSessionCookie honors custom domain + maxAge", () => {
+    const c = buildSessionCookie("t", { domain: "example.org", maxAge: 60 });
+    expect(c).toContain("Domain=example.org");
+    expect(c).toContain("Max-Age=60");
+  });
+
+  it("clearSessionCookie expires the cookie (Max-Age=0) with the same scope", () => {
+    const c = clearSessionCookie();
+    expect(c).toMatch(/^__Secure-troop_session=;/);
+    expect(c).toContain("Domain=troop10rwc.org");
+    expect(c).toContain("Max-Age=0");
+  });
+});
+
+/* ---------------------------- d1SessionLookup --------------------------- */
+
+/** Minimal D1 stub: prepare().bind(token).first<T>() returns rows[token] ?? null. */
+function fakeDb(rows: Record<string, SessionRowLike | undefined>): D1Database {
+  return {
+    prepare: () => ({
+      bind: (token: string) => ({
+        first: async () => rows[token] ?? null,
+      }),
+    }),
+  } as unknown as D1Database;
+}
+interface SessionRowLike {
+  sub: string;
+  expires_at: number;
+  name: string | null;
+  email: string | null;
+}
+const future = () => nowSec() + 300;
+const past = () => nowSec() - 60;
+const nowSec = () => Math.floor(Date.now() / 1000);
+
+describe("d1SessionLookup", () => {
+  it("returns the identity for a live session", async () => {
+    const db = fakeDb({
+      good: { sub: "U1", expires_at: future(), name: "Alice", email: "a@troop10rwc.org" },
+    });
+    expect(await d1SessionLookup(db)("good")).toEqual({
+      sub: "U1",
+      name: "Alice",
+      email: "a@troop10rwc.org",
+    });
+  });
+
+  it("maps null name/email to undefined", async () => {
+    const db = fakeDb({ good: { sub: "U1", expires_at: future(), name: null, email: null } });
+    expect(await d1SessionLookup(db)("good")).toEqual({ sub: "U1" });
+  });
+
+  it("returns null for an unknown token", async () => {
+    expect(await d1SessionLookup(fakeDb({}))("missing")).toBeNull();
+  });
+
+  it("returns null for an expired session", async () => {
+    const db = fakeDb({
+      stale: { sub: "U1", expires_at: past(), name: "A", email: "a@b" },
+    });
+    expect(await d1SessionLookup(db)("stale")).toBeNull();
+  });
+});
+
+/* ---------------------------- requireSession ---------------------------- */
+
+describe("requireSession", () => {
+  type Env = SessionVariables & { Bindings: Record<string, never> };
+
+  function makeApp(opts: Parameters<typeof requireSession>[0]) {
+    const app = new Hono<Env>();
+    app.use("*", requireSession(opts));
+    app.get("/me", (c) => c.json({ session: c.var.session }));
+    return app;
+  }
+
+  const authOrigin = "https://auth.troop10rwc.org";
+  const cookieFor = (token: string) => ({ Cookie: `${SESSION_COOKIE_NAME}=${token}` });
+  const alice: SessionIdentity = { sub: "U1", name: "Alice", email: "a@troop10rwc.org" };
+
+  it("devBypass: attaches the bypass identity without a cookie", async () => {
+    const app = makeApp({ authOrigin, lookup: async () => null, devBypass: alice });
+    const res = await app.request("/me");
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ session: alice });
+  });
+
+  it("attaches the session for a valid token", async () => {
+    const lookup = vi.fn(async () => alice);
+    const app = makeApp({ authOrigin, lookup });
+    const res = await app.request("/me", { headers: cookieFor("tok") });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ session: alice });
+    expect(lookup).toHaveBeenCalledWith("tok");
+  });
+
+  it("redirects to the auth Worker login (preserving the return url) when no cookie", async () => {
+    const app = makeApp({ authOrigin, lookup: async () => null });
+    const res = await app.request("http://calendar.troop10rwc.org/event/5");
+    expect(res.status).toBe(302);
+    const loc = res.headers.get("location")!;
+    expect(loc.startsWith(`${authOrigin}/login?redirect=`)).toBe(true);
+    expect(loc).toContain(encodeURIComponent("http://calendar.troop10rwc.org/event/5"));
+  });
+
+  it("redirects for an unknown / expired token", async () => {
+    const app = makeApp({ authOrigin, lookup: async () => null });
+    const res = await app.request("/me", { headers: cookieFor("stale") });
+    expect(res.status).toBe(302);
+  });
+
+  it("json mode returns 401 instead of redirecting", async () => {
+    const app = makeApp({ authOrigin, lookup: async () => null, onUnauthenticated: "json" });
+    const res = await app.request("/me");
+    expect(res.status).toBe(401);
+    expect(await res.json()).toEqual({ error: "unauthorized" });
+  });
+
+  it("fails closed (redirect) when the lookup throws", async () => {
+    const app = makeApp({
+      authOrigin,
+      lookup: async () => {
+        throw new Error("D1 down");
+      },
+    });
+    const res = await app.request("/me", { headers: cookieFor("tok") });
+    expect(res.status).toBe(302);
+  });
+
+  it("strips a trailing slash from authOrigin", async () => {
+    const app = makeApp({ authOrigin: `${authOrigin}/`, lookup: async () => null });
+    const res = await app.request("/me");
+    expect(res.headers.get("location")!.startsWith(`${authOrigin}/login`)).toBe(true);
+  });
+
+  it("works end-to-end against d1SessionLookup with a bound D1", async () => {
+    const db = fakeDb({ live: { sub: "U9", expires_at: future(), name: "Bob", email: "b@b" } });
+    const app = makeApp({ authOrigin, db });
+    const ok = await app.request("/me", { headers: cookieFor("live") });
+    expect(await ok.json()).toEqual({ session: { sub: "U9", name: "Bob", email: "b@b" } });
+    const miss = await app.request("/me", { headers: cookieFor("nope") });
+    expect(miss.status).toBe(302);
+  });
+
+  it("throws if neither db nor lookup is provided", () => {
+    expect(() => requireSession({ authOrigin })).toThrow(/provide either/);
   });
 });
