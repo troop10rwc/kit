@@ -7,13 +7,13 @@ description: Prep a Troop 10 RWC app to consume @troop10rwc/kit (shared, ui, wor
 
 `@troop10rwc/kit` is the shared stack for Troop 10 RWC apps. Three packages, split
 by runtime — **reuse them instead of redefining types, re-styling components, or
-re-implementing Access auth:**
+re-implementing session/auth middleware:**
 
 | Package | Runtime | Use for |
 |---|---|---|
 | `@troop10rwc/shared` | neutral | types/contracts: `Role`, `Position`, `LEADER_POSITIONS`, `Identity`, `Change`, `Changeset` |
 | `@troop10rwc/ui` | React 19 (DOM) | back-office components + `theme.css` / `fonts.css` design tokens |
-| `@troop10rwc/worker-kit` | Cloudflare Workers (`workerd`) | `verifyAccessJwt`, `roleForPosition`, `withAuth`, `requireLeader` |
+| `@troop10rwc/worker-kit` | Cloudflare Workers (`workerd`) | `requireSession` + D1 session helpers, `roleForPosition`, `requireLeader` (legacy Access `verifyAccessJwt`/`withAuth` until apps migrate) |
 
 ## When invoked: prep this repo
 
@@ -39,6 +39,11 @@ anything already done, and **report what changed; leave committing to the user**
      For a one-off install: `NPM_TOKEN=$(gh auth token) <pm> install`.
    - A `401/403 … does not match expected scopes` means the token is missing —
      it is **not** a visibility problem.
+   - **`NPM_TOKEN` shadowing footgun:** a project `.npmrc` with `${NPM_TOKEN}`
+     **overrides** the token in `~/.npmrc` when the env var is unset — so a working
+     global token still 401s. Either export `NPM_TOKEN` (e.g. `NPM_TOKEN=$(gh auth
+     token)`) or omit the `_authToken` line from the project `.npmrc` to fall back
+     to `~/.npmrc`.
 
 3. **Install** (use the detected PM; `add` for pnpm/yarn, `i` for npm):
    ```bash
@@ -78,32 +83,59 @@ anything already done, and **report what changed; leave committing to the user**
 
 ## Wire Worker auth (when the app has a Worker)
 
-`worker-kit` ships real `roleForPosition` / `requireLeader`. `withAuth` resolves
-the Access identity and roster role onto the Hono context:
+Apps authenticate with **`requireSession`** — the self-hosted scheme that
+replaces Cloudflare Access. Slack OIDC enrollment, passkey ceremonies, and the
+`/profile` "my devices" page live in the standalone **member-hub Worker at
+`id.troop10rwc.org`**; consuming apps only validate the session.
+`requireSession` reads the `__Secure-` session cookie, looks the opaque token up
+in the shared D1 `sessions` table (instant revocation), and attaches the identity
+to the Hono context. It **fails closed** — a missing/unknown/expired token is
+unauthenticated and (by default) 302-redirects to the hub's `/login`:
 
 ```ts
-import { withAuth, requireLeader } from "@troop10rwc/worker-kit";
+import { requireSession } from "@troop10rwc/worker-kit";
 
-app.use("*", withAuth({
-  verify: { teamDomain: "troop10rwc", audience: env.ACCESS_AUD },
-  lookupPosition: (email) => /* your D1 query -> Position | null */ null,
-  inLeaderGroup: (jwt) => /* read LEADER_GROUP from the Access claim */ false,
-  devBypass: env.DEV_AUTH_BYPASS ? { email: "dev@troop10rwc", name: "Dev" } : undefined,
+app.use("*", requireSession({
+  db: env.DB,                               // D1 binding holding the sessions table
+  authOrigin: "https://id.troop10rwc.org",  // 302 → <authOrigin>/login?redirect=<current url>
+  // onUnauthenticated: "json",          // API/fetch Workers: 401 { error: "unauthorized" } instead
+  // devBypass: env.DEV_AUTH_BYPASS ? { sub: "dev", name: "Dev" } : undefined,
 }));
-
-app.post("/api/roster", requireLeader(), handler);
 ```
 
-Handlers then read `c.var.identity` and `c.var.role`.
+Handlers then read `c.var.session` — a `SessionIdentity` of `{ sub, name?, email? }`
+where `sub` is the stable Slack OIDC subject. (Pass a custom `lookup` instead of
+`db` to resolve tokens your own way; `d1SessionLookup(db)` is the default.)
 
-**Important:** `verifyAccessJwt` is **implemented** in `worker-kit` (WebCrypto
-RS256 against the team JWKS, validating `iss` / `aud` / `exp` / signature) — so a
-new app should rely on the kit rather than keep its own copy; delete any per-app
-`src/worker/auth.ts` verifier as a deliberate, separately-reviewed migration.
-`teamDomain` / `audience` are env/config — never hard-code or bundle them (the
-published artifact is world-downloadable). Replacing a repo's existing local
-auth/types with the kit is a migration, not part of the basic prep above — do it
-as its own reviewed change.
+**Roster-role gating:** `requireSession` attaches the *identity* only — it does
+**not** resolve the roster `role`, so `requireLeader()` (which reads `c.var.role`)
+is currently wired only by the legacy `withAuth` path. For leader-only routes
+under sessions, resolve the role from the roster (D1) in your own middleware,
+keyed on `c.var.session.email` — **email is the reliable roster key** — until a
+session-aware role helper lands in the kit. Note sessions carry **no group
+claim**, so the old `LEADER_GROUP` Access-group fallback applies only on the
+Access path; prod leader resolution is roster + override.
+
+**Hard constraints** (easy to get wrong): the Worker must serve on
+`*.troop10rwc.org` (never `*.workers.dev`), and the session cookie uses the
+`__Secure-` prefix with `Domain=troop10rwc.org` so SSO works across subdomains —
+`__Host-` forbids `Domain` and breaks it. The app binds the same D1 database the
+hub writes sessions to.
+
+**Hybrid auth for preview deploys — keep the Access path.** Because the cookie is
+`Domain=troop10rwc.org`, it **never reaches `*.workers.dev` preview hosts**. A repo
+that depends on preview review deploys must branch per environment: **sessions on
+prod, `withAuth` (Access) on previews** — don't replace `withAuth` wholesale.
+Consequence to flag to the user: the session path is **only verifiable on
+production**; previews exercise the Access branch only.
+
+**Migrating off Access?** The legacy `withAuth` / `verifyAccessJwt` (WebCrypto
+RS256 against the team JWKS) stay exported — needed for the preview path above and
+for apps not yet migrated — but prod work should wire `requireSession`. Swapping a
+repo's existing local auth/types onto the kit is a deliberate, separately-reviewed
+migration — not part of the basic prep above. Never hard-code env/config (team
+domain, audience, auth origin) into the bundle — the published artifact is
+world-downloadable.
 
 ## Stay current
 
