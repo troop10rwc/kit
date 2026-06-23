@@ -13,8 +13,17 @@ Every app (scoutpack and friends) is the same shape:
 - **Edge:** Hono on Cloudflare Workers (`workerd` — WebCrypto/fetch globals, no
   node builtins).
 - **Data:** Cloudflare D1.
-- **Auth:** behind Cloudflare Access; the effective role is derived from the
-  **roster** (D1), not the raw OIDC claim.
+- **Auth:** self-hosted on Workers — **Slack OIDC** is the one-time enrollment
+  gate (workspace-locked) and **passkeys (WebAuthn)** are the daily driver, with
+  Slack as recovery. Sessions are **opaque tokens backed by a `sessions` row in
+  D1** (instant revocation), checked by `requireSession()` middleware on every
+  protected Worker; the Slack/passkey legs and the `/profile` page are served by
+  the **member-hub Worker at `id.troop10rwc.org`**. The effective role is still
+  derived from the **roster** (D1), keyed by the member's email (the reliable
+  identity key), not the raw OIDC claim. This replaces Cloudflare Access (the
+  50-user free cap
+  then per-user cliff); the legacy Access path (`withAuth`/`verifyAccessJwt`)
+  stays in `worker-kit` until each app migrates.
 
 Shared building blocks live in [`@troop10rwc/kit`](https://github.com/troop10rwc/kit),
 published to **GitHub Packages**, split by runtime so React stays out of Worker
@@ -24,10 +33,10 @@ bundles and DOM types stay out of edge code:
 |---|---|---|
 | `@troop10rwc/shared` | neutral | types/contracts: `Role`, `Position`, `LEADER_POSITIONS`, `Identity`, `Change`, `Changeset` |
 | `@troop10rwc/ui` | React 19 (DOM) | back-office components + `theme.css` / `fonts.css` design tokens + `STYLE.md` |
-| `@troop10rwc/worker-kit` | Workers (`workerd`) | `verifyAccessJwt`, `roleForPosition`, `withAuth`, `requireLeader` |
+| `@troop10rwc/worker-kit` | Workers (`workerd`) | `requireSession` + D1 session helpers (`d1SessionLookup`, `buildSessionCookie`/`clearSessionCookie`, `SESSION_COOKIE_NAME`), `roleForPosition`, `requireLeader`; legacy Access `verifyAccessJwt`/`withAuth` (until apps migrate) |
 
 **Reuse these.** Don't redefine the shared types, re-style the components, or
-re-implement Access auth per app.
+re-implement session/auth middleware per app.
 
 ## Design contract
 
@@ -71,10 +80,23 @@ anonymous access** — a token is always required.
    import { AppShell, DataTable, Drawer } from "@troop10rwc/ui";
    ```
 
-4. Wire Worker auth with `withAuth` / `requireLeader`. `verifyAccessJwt` is
-   currently a **stub** — port the WebCrypto RS256 verification from the app's
-   `src/worker/auth.ts` before relying on it. `teamDomain`/`audience` come from
-   env/config; never hard-code or bundle them.
+4. Wire Worker auth with `requireSession`. It validates the `__Secure-` session
+   cookie against the D1 `sessions` table via `d1SessionLookup`, so each protected
+   Worker binds the shared D1 and redirects unauthenticated requests to
+   `https://id.troop10rwc.org/login` (pass it as `authOrigin`). Apps no longer
+   verify Access JWTs themselves — Slack enrollment, passkey ceremonies, and the
+   `/profile` "my devices" page live in the standalone **member-hub Worker at
+   `id.troop10rwc.org`**. `requireSession` attaches the session identity
+   (`{ sub, name?, email? }`) to `c.var.session`; resolve the roster role off
+   `c.var.session.email` (email is the reliable roster key) for leader gating.
+   Hard constraints: serve on `*.troop10rwc.org` (never `*.workers.dev`), and the
+   cookie uses the `__Secure-` prefix with `Domain=troop10rwc.org` so the session
+   works across subdomains.
+
+   > Migrating off Access? The legacy `withAuth` / `verifyAccessJwt` (a WebCrypto
+   > RS256 **stub** to be ported from the app's `src/worker/auth.ts`) remain
+   > exported for apps still behind Cloudflare Access, but new work should use
+   > `requireSession`.
 
 5. Keep current: point **Renovate/Dependabot** at `@troop10rwc/*` so kit bumps
    arrive as PRs (the low-maintenance substitute for a monorepo's atomic updates).

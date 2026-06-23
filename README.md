@@ -8,7 +8,7 @@ same Vite + Hono + Workers + D1 stack). One repo, three published packages on
 |---|---|---|
 | `@troop10rwc/shared` | neutral | types/contracts shared by client + worker (roles, `Changeset`) — zero deps |
 | `@troop10rwc/ui` | DOM / React 19 | the back-office component library + `theme.css` + `fonts.css` |
-| `@troop10rwc/worker-kit` | workerd | Access JWT verify, roster roles, Hono middleware |
+| `@troop10rwc/worker-kit` | workerd | `requireSession` + D1 session helpers, roster roles, Hono middleware (legacy Access JWT verify kept until apps migrate) |
 
 Split by runtime on purpose: this keeps React out of Worker bundles and DOM
 types out of edge code. The design system itself is documented in
@@ -117,9 +117,29 @@ For changelogs later, adopt **Changesets**; it's overkill at two consumers today
    at them so `@troop10rwc/*` bumps arrive as PRs. That's the low-maintenance
    substitute for a monorepo's atomic updates.
 
+## Auth model
+
+Apps authenticate with **`requireSession`**: a self-hosted scheme that replaces
+Cloudflare Access. **Slack OIDC** is the one-time enrollment gate
+(workspace-locked) and **passkeys (WebAuthn)** are the daily driver; sessions are
+**opaque tokens stored in a D1 `sessions` table** (instant revocation), carried in
+a `__Secure-` cookie scoped to `Domain=troop10rwc.org` so SSO works across
+subdomains. The Slack legs, passkey ceremonies, and the `/profile` "my devices"
+page live in the standalone **member-hub Worker at `id.troop10rwc.org`** (apps
+redirect unauthenticated requests there via `authOrigin`); this kit ships the
+Worker-side middleware and session helpers (`requireSession`, `d1SessionLookup`,
+`buildSessionCookie`/`clearSessionCookie`, `SESSION_COOKIE_NAME`,
+`SESSION_MAX_AGE`). `requireSession` attaches `c.var.session` (`{ sub, name?,
+email? }`); the roster role is keyed by the member's **email**, the reliable
+identity key.
+
+The legacy Access path (`withAuth`, `verifyAccessJwt`) stays exported until each
+app migrates — see [`STACK.md`](STACK.md#consuming-the-kit) for wiring.
+
 ## Porting notes
 
 `worker-kit` ships real `roleForPosition`/`requireLeader` logic plus **stubs**
-for `verifyAccessJwt` and `withAuth`. Move your existing implementations from
-`src/worker/auth.ts` (WebCrypto RS256) and `src/worker/roster.ts` (D1 lookup)
-into them, then delete the per-app copies so both apps share one.
+for the legacy `verifyAccessJwt` and `withAuth`. For apps still on Access, move
+your existing implementations from `src/worker/auth.ts` (WebCrypto RS256) and
+`src/worker/roster.ts` (D1 lookup) into them, then delete the per-app copies so
+both apps share one. New apps should wire `requireSession` instead.
