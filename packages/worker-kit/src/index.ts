@@ -218,13 +218,18 @@ export function requireLeader(): MiddlewareHandler {
 /* ============================================================================
    Member sessions — Slack-enrollment + passkey auth (replaces Cloudflare Access)
 
-   The auth Worker (auth.troop10rwc.org) mints an opaque session token, stores a
-   row in D1, and sets it as the shared `__Secure-troop_session` cookie scoped to
-   the parent domain. Every app Worker validates with `requireSession`, which
+   The identity service (id.troop10rwc.org) mints an opaque session token, stores
+   a row in D1, and sets it as the shared `__Secure-troop_session` cookie scoped
+   to the parent domain. Every app Worker validates with `requireSession`, which
    looks the token up in the SAME D1 (Option B — strongly consistent, instant
-   revocation). The auth Worker itself is built separately; this is the reusable
-   middleware app Workers consume, plus the canonical cookie/lookup contracts so
-   issuer and verifier can't drift.
+   revocation). The identity service itself is built separately; this is the
+   reusable middleware app Workers consume, plus the canonical cookie/lookup
+   contracts so issuer and verifier can't drift.
+
+   LOAD-BEARING: the cookie is `Domain=troop10rwc.org`, so it NEVER reaches
+   `*.workers.dev` preview hosts. Apps that rely on preview deploys can't run the
+   session path there — keep the Access path (`withAuth`) for previews and gate on
+   session vs Access per environment. Don't "simplify" the Access branch away.
    ========================================================================== */
 
 const nowSeconds = () => Math.floor(Date.now() / 1000);
@@ -306,7 +311,7 @@ export function d1SessionLookup(db: D1Database): (token: string) => Promise<Sess
 }
 
 export interface RequireSessionDeps {
-  /** Auth Worker origin for the login redirect, e.g. "https://auth.troop10rwc.org". */
+  /** Identity service origin for the login redirect, e.g. "https://id.troop10rwc.org". */
   authOrigin: string;
   /** D1 binding; used to build the default lookup when `lookup` is omitted. */
   db?: D1Database;

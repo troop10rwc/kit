@@ -39,6 +39,11 @@ anything already done, and **report what changed; leave committing to the user**
      For a one-off install: `NPM_TOKEN=$(gh auth token) <pm> install`.
    - A `401/403 … does not match expected scopes` means the token is missing —
      it is **not** a visibility problem.
+   - **`NPM_TOKEN` shadowing footgun:** a project `.npmrc` with `${NPM_TOKEN}`
+     **overrides** the token in `~/.npmrc` when the env var is unset — so a working
+     global token still 401s. Either export `NPM_TOKEN` (e.g. `NPM_TOKEN=$(gh auth
+     token)`) or omit the `_authToken` line from the project `.npmrc` to fall back
+     to `~/.npmrc`.
 
 3. **Install** (use the detected PM; `add` for pnpm/yarn, `i` for npm):
    ```bash
@@ -107,7 +112,9 @@ where `sub` is the stable Slack OIDC subject. (Pass a custom `lookup` instead of
 is currently wired only by the legacy `withAuth` path. For leader-only routes
 under sessions, resolve the role from the roster (D1) in your own middleware,
 keyed on `c.var.session.email` — **email is the reliable roster key** — until a
-session-aware role helper lands in the kit.
+session-aware role helper lands in the kit. Note sessions carry **no group
+claim**, so the old `LEADER_GROUP` Access-group fallback applies only on the
+Access path; prod leader resolution is roster + override.
 
 **Hard constraints** (easy to get wrong): the Worker must serve on
 `*.troop10rwc.org` (never `*.workers.dev`), and the session cookie uses the
@@ -115,12 +122,19 @@ session-aware role helper lands in the kit.
 `__Host-` forbids `Domain` and breaks it. The app binds the same D1 database the
 hub writes sessions to.
 
+**Hybrid auth for preview deploys — keep the Access path.** Because the cookie is
+`Domain=troop10rwc.org`, it **never reaches `*.workers.dev` preview hosts**. A repo
+that depends on preview review deploys must branch per environment: **sessions on
+prod, `withAuth` (Access) on previews** — don't replace `withAuth` wholesale.
+Consequence to flag to the user: the session path is **only verifiable on
+production**; previews exercise the Access branch only.
+
 **Migrating off Access?** The legacy `withAuth` / `verifyAccessJwt` (WebCrypto
-RS256 against the team JWKS) stay exported for apps still behind Cloudflare
-Access, but new work should wire `requireSession`. Swapping a repo's existing
-local auth/types onto the kit is a deliberate, separately-reviewed migration —
-not part of the basic prep above. Never hard-code env/config (team domain,
-audience, auth origin) into the bundle — the published artifact is
+RS256 against the team JWKS) stay exported — needed for the preview path above and
+for apps not yet migrated — but prod work should wire `requireSession`. Swapping a
+repo's existing local auth/types onto the kit is a deliberate, separately-reviewed
+migration — not part of the basic prep above. Never hard-code env/config (team
+domain, audience, auth origin) into the bundle — the published artifact is
 world-downloadable.
 
 ## Stay current

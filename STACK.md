@@ -24,6 +24,12 @@ Every app (scoutpack and friends) is the same shape:
   50-user free cap
   then per-user cliff); the legacy Access path (`withAuth`/`verifyAccessJwt`)
   stays in `worker-kit` until each app migrates.
+- **Hybrid auth is deliberate, not transitional debt.** The session cookie is
+  `Domain=troop10rwc.org`, so it **never reaches `*.workers.dev` preview hosts** —
+  an app that depends on preview deploys must keep the **Access path on previews**
+  and use **sessions on prod**, branching per environment. Don't "simplify" the
+  Access branch away; the cookie's domain scope is load-bearing. (Corollary: the
+  session path is only exercisable on production — previews can't verify it.)
 
 Shared building blocks live in [`@troop10rwc/kit`](https://github.com/troop10rwc/kit),
 published to **GitHub Packages**, split by runtime so React stays out of Worker
@@ -89,14 +95,16 @@ anonymous access** — a token is always required.
    `id.troop10rwc.org`**. `requireSession` attaches the session identity
    (`{ sub, name?, email? }`) to `c.var.session`; resolve the roster role off
    `c.var.session.email` (email is the reliable roster key) for leader gating.
-   Hard constraints: serve on `*.troop10rwc.org` (never `*.workers.dev`), and the
-   cookie uses the `__Secure-` prefix with `Domain=troop10rwc.org` so the session
-   works across subdomains.
+   Sessions carry no group claim, so the `LEADER_GROUP` fallback applies only on
+   the Access path. Hard constraints: serve on `*.troop10rwc.org` (never
+   `*.workers.dev`), and the cookie uses the `__Secure-` prefix with
+   `Domain=troop10rwc.org` so the session works across subdomains.
 
    > Migrating off Access? The legacy `withAuth` / `verifyAccessJwt` (a WebCrypto
    > RS256 **stub** to be ported from the app's `src/worker/auth.ts`) remain
-   > exported for apps still behind Cloudflare Access, but new work should use
-   > `requireSession`.
+   > exported — and are still **required for preview deploys** (the cookie can't
+   > reach `*.workers.dev`, so keep Access on previews and sessions on prod) — but
+   > prod work should use `requireSession`.
 
 5. Keep current: point **Renovate/Dependabot** at `@troop10rwc/*` so kit bumps
    arrive as PRs (the low-maintenance substitute for a monorepo's atomic updates).
