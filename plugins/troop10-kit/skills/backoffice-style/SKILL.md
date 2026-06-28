@@ -77,10 +77,15 @@ it — both are **deprecated**; prefer the grouped form + `hidden` for anything 
 
 **`BackOfficeTopNav`** — the cross-app product switcher shared across the *whole*
 back office (Expenses · Gearlist · …). Render it identically in every app; pass
-only your own `active` id, the `user`, and the Access `logoutUrl`. The app list is
+only your own `active` id, the `user`, and the `logoutUrl`. The app list is
 the single source of truth in the kit (`BACK_OFFICE_APPS`) — never hand-maintain
 it; adding an app is a one-line kit edit + release. Apps are mounted same-origin
-under `/manage`, so these are plain in-page links (no router dependency).
+under `/manage`, so these are plain in-page links (no router dependency). The
+brand logo always points at the apex-domain **dashboard** (`DASHBOARD_URL` =
+`troop10rwc.org/dashboard`), and the user's name shows a **Profile** link to
+**account management** on the member-hub (`ACCOUNT_URL` = `id.troop10rwc.org/manage`).
+Both default from the kit; pass `dashboardUrl`/`profileUrl` only to override on a
+preview/staging env.
 
 `Drawer` is built on Radix's headless `Dialog` (focus trap, focus restore,
 Escape/scrim dismissal, ARIA) — all styling stays in `t10-*` classes; its public

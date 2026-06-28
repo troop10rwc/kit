@@ -117,6 +117,61 @@ For changelogs later, adopt **Changesets**; it's overkill at two consumers today
    at them so `@troop10rwc/*` bumps arrive as PRs. That's the low-maintenance
    substitute for a monorepo's atomic updates.
 
+## Migrating to v0.8.0 (top-nav: dashboard brand + Profile link)
+
+v0.8.0 changes `BackOfficeTopNav` (in `@troop10rwc/ui`):
+
+- The **T10 brand logo** now always points at the dashboard —
+  `DASHBOARD_URL` = `https://troop10rwc.org/dashboard` (its own app on the apex
+  domain) — instead of the active app's own home.
+- The signed-in section is now a stacked block: the **user's name** with a
+  **Profile** link underneath that goes to `ACCOUNT_URL` =
+  `https://id.troop10rwc.org/manage` (account management). The old
+  "Signed in as …" text is gone.
+- Both destinations are exported constants with optional `dashboardUrl` /
+  `profileUrl` prop overrides (use them only for preview/staging).
+
+`troop10rwc.org/dashboard` (dashboard) and `id.troop10rwc.org` (account info)
+are now **distinct apps** — see [`STACK.md`](STACK.md#domains--navigation).
+
+### Each dependent project
+
+**1. Every consuming app (scoutpack and friends)** — pick up the new nav. No
+code change is required if you render `BackOfficeTopNav` with the standard
+`active` / `user` / `logoutUrl` props; the new brand target and Profile link
+come for free:
+
+```bash
+# in the app repo
+pnpm update @troop10rwc/ui@^0.8.0 @troop10rwc/shared@^0.8.0
+pnpm update @troop10rwc/worker-kit@^0.8.0      # worker side, if used
+```
+
+- Delete any local "Signed in as …" markup or a hand-wired brand link — the kit
+  owns both now.
+- Previews can't reach the apex/id cookies, so override there if needed:
+  ```tsx
+  <BackOfficeTopNav active="expenses" user={me} logoutUrl={logoutUrl}
+    dashboardUrl={isPreview ? "/" : undefined}
+    profileUrl={isPreview ? "/manage" : undefined} />
+  ```
+
+**2. The `id` (member-hub) project** — split account from dashboard:
+
+- Keep account management at **`id.troop10rwc.org/manage`** (the Profile target):
+  Slack enrollment, passkeys/devices, profile. Add the `/manage` route if it
+  isn't there yet.
+- Stand up the **dashboard as a separate Worker on the apex domain**, routed at
+  `troop10rwc.org/dashboard` (it may live in the same repo as a second Worker):
+  ```bash
+  # in the id repo, e.g. workers/dashboard/wrangler.toml
+  #   name = "troop10-dashboard"
+  #   routes = [{ pattern = "troop10rwc.org/dashboard*", zone_name = "troop10rwc.org" }]
+  npx wrangler deploy --config workers/dashboard/wrangler.toml
+  ```
+  Protect it with `requireSession` from `@troop10rwc/worker-kit` like any other
+  back-office Worker.
+
 ## Auth model
 
 Apps authenticate with **`requireSession`**: a self-hosted scheme that replaces

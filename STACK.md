@@ -31,6 +31,27 @@ Every app (scoutpack and friends) is the same shape:
   Access branch away; the cookie's domain scope is load-bearing. (Corollary: the
   session path is only exercisable on production — previews can't verify it.)
 
+## Domains & navigation
+
+The back office is split across three roles on the `troop10rwc.org` zone. The
+session cookie is `Domain=troop10rwc.org`, so SSO works across all of them.
+
+| URL | Role | Worker |
+|---|---|---|
+| `troop10rwc.org/dashboard` | **Dashboard** — the landing app / launchpad. The T10 brand logo in every app points here. | its own apex-domain Worker (separate from the member-hub) |
+| `troop10rwc.org/manage/*` | **Back-office apps** — Calendar, Gearlist, Expenses, Roster (`BACK_OFFICE_APPS`). | the individual app Workers |
+| `id.troop10rwc.org` | **Account** — Slack enrollment, passkeys/devices, profile. The "Profile" link under the user's name points to `id.troop10rwc.org/manage`. | member-hub Worker |
+
+Load-bearing split: **`id.troop10rwc.org` is account info only** — it does **not**
+serve the dashboard. The dashboard is its **own app on the apex domain**, served
+by a separate Worker (which may live in the same `id` repo). This keeps "home"
+(dashboard) distinct from "my account" (id).
+
+`BackOfficeTopNav` (in `@troop10rwc/ui`) is the single source of truth for these
+destinations: the brand logo → `DASHBOARD_URL` (`troop10rwc.org/dashboard`), the
+user's name → `ACCOUNT_URL` (`id.troop10rwc.org/manage`). Both are exported
+constants with optional `dashboardUrl`/`profileUrl` prop overrides for previews.
+
 Shared building blocks live in [`@troop10rwc/kit`](https://github.com/troop10rwc/kit),
 published to **GitHub Packages**, split by runtime so React stays out of Worker
 bundles and DOM types stay out of edge code:

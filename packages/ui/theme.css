@@ -221,9 +221,17 @@ body { background-color: var(--t10-paper); }
 .appnav__product--active:hover { background: var(--t10-pine); }
 .appnav__spacer { margin-left: auto; }
 .appnav__user {
-  font-family: var(--t10-font-mono); font-size: 11.5px; color: #dfe6da;
+  display: flex; flex-direction: column; align-items: flex-end;
+  line-height: 1.15; gap: 1px;
 }
-.appnav__user strong { color: #fff; font-weight: 600; }
+.appnav__username {
+  font-family: var(--t10-font-mono); font-size: 11.5px; font-weight: 600; color: #fff;
+}
+.appnav__profile {
+  font-family: var(--t10-font-display); font-weight: 600; font-size: 10px;
+  letter-spacing: .04em; text-transform: uppercase; color: #9fb6a3; text-decoration: none;
+}
+.appnav__profile:hover { color: #fff; text-decoration: none; }
 .appnav__signout {
   font-family: var(--t10-font-display); font-weight: 600; font-size: 11px;
   letter-spacing: .02em; color: #e7ece4; white-space: nowrap; text-decoration: none;
