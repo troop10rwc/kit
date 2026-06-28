@@ -63,17 +63,21 @@ view**; destructive = `danger`), `StatusPill` (`tone=…`), `Field`, `SectionLab
 Plus `DataTable`, `Drawer` / `SplitView` / `OverlayHost`, `CommandPalette`,
 `ChangesetReview`, `AppShell`, `BackOfficeTopNav`.
 
-**`AppShell`** — the frame every page lives inside (topbar + sidebar + headstrip).
-Nav is **data-driven**: pass `nav` as `NavGroup[]` (eyebrow `label` + `items`) —
-you own the groups, order, membership, and nesting (`children`). Give each item an
-`href` so it renders a real `<a>` (middle-click, open-in-new-tab, native a11y);
-mark the current one with `active` (an id) or an `isActive` predicate (route-prefix
-matching). Compute visibility yourself with `hidden` (e.g. `hidden={!isLeader}`,
-derived from the `member_roles` role — *not* the raw OIDC claim); a hidden item
-drops its whole subtree. Set the topbar lockup with `brand={{ badge, title,
-subtitle }}`. *Legacy:* a flat `nav={[…]}` is still accepted (bucketed into the
-historical Operations/Roster id groups) and `leaderOnly` + `isLeader` still filter
-it — both are **deprecated**; prefer the grouped form + `hidden` for anything new.
+**`AppShell`** — the frame every page lives inside (top bar + sidebar + headstrip).
+The top bar is **required and is always `BackOfficeTopNav`** — pass it via
+`appSwitcher={<BackOfficeTopNav active=… user=… logoutUrl=… />}`. AppShell no
+longer ships its own standalone topbar; the `brand` and `user` props are
+**deprecated no-ops** (the brand lockup and signed-in user live in
+`BackOfficeTopNav` now). Nav is **data-driven**: pass `nav` as `NavGroup[]`
+(eyebrow `label` + `items`) — you own the groups, order, membership, and nesting
+(`children`). Give each item an `href` so it renders a real `<a>` (middle-click,
+open-in-new-tab, native a11y); mark the current one with `active` (an id) or an
+`isActive` predicate (route-prefix matching). Compute visibility yourself with
+`hidden` (e.g. `hidden={!isLeader}`, derived from the `member_roles` role — *not*
+the raw OIDC claim); a hidden item drops its whole subtree. *Legacy:* a flat
+`nav={[…]}` is still accepted (bucketed into the historical Operations/Roster id
+groups) and `leaderOnly` + `isLeader` still filter it — both are **deprecated**;
+prefer the grouped form + `hidden` for anything new.
 
 **`BackOfficeTopNav`** — the cross-app product switcher shared across the *whole*
 back office (Expenses · Gearlist · …). Render it identically in every app; pass

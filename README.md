@@ -117,6 +117,48 @@ For changelogs later, adopt **Changesets**; it's overkill at two consumers today
    at them so `@troop10rwc/*` bumps arrive as PRs. That's the low-maintenance
    substitute for a monorepo's atomic updates.
 
+## Migrating to v0.9.0 (one top bar) — BREAKING
+
+There is now **one top bar across the whole back office: `BackOfficeTopNav`.**
+`AppShell` no longer ships its own standalone topbar:
+
+- `AppShell`'s `appSwitcher` prop is now **required** — always pass
+  `<BackOfficeTopNav … />`. Omitting it is a TypeScript error.
+- `AppShell`'s `brand` and `user` props are **deprecated no-ops** (still accepted
+  so existing call sites compile; they render nothing). The brand lockup and the
+  signed-in user now live in `BackOfficeTopNav`.
+- The `.t10-topbar` / `.t10-brand` / `.t10-brand__badge` CSS classes were
+  removed. If any app used them in its own markup, switch to `BackOfficeTopNav`.
+
+### Each dependent project
+
+**Every consuming app** — make `AppShell` render the shared top bar:
+
+```bash
+pnpm update @troop10rwc/ui@^0.9.0 @troop10rwc/shared@^0.9.0
+pnpm update @troop10rwc/worker-kit@^0.9.0      # worker side, if used
+```
+
+```tsx
+// Before — relying on AppShell's built-in topbar:
+<AppShell nav={nav} active={active} user={me} brand={{ badge: "T10", title: "scoutpack" }}>
+  …
+</AppShell>
+
+// After — pass the one true top bar via appSwitcher:
+<AppShell
+  nav={nav}
+  active={active}
+  appSwitcher={<BackOfficeTopNav active="expenses" user={me} logoutUrl={logoutUrl} />}
+>
+  …
+</AppShell>
+```
+
+Move `user` (and any logout handling) onto `BackOfficeTopNav`; drop the
+`brand` prop. Apps that already passed `appSwitcher={<BackOfficeTopNav … />}`
+need only the version bump — no code change.
+
 ## Migrating to v0.8.0 (top-nav: dashboard brand + Profile link)
 
 v0.8.0 changes `BackOfficeTopNav` (in `@troop10rwc/ui`):

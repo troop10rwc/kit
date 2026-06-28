@@ -2,9 +2,15 @@ import type { ReactNode } from "react";
 
 /* ============================================================================
    @troop10rwc/ui · AppShell.tsx
-   The frame every back-office page sits inside: branded topbar, sidebar nav,
-   and a headstrip for the page title + optional actions. Wrap the whole tree in
+   The frame every back-office page sits inside: the shared cross-app top bar
+   (passed in via `appSwitcher` — always <BackOfficeTopNav>), sidebar nav, and a
+   headstrip for the page title + optional actions. Wrap the whole tree in
    <div className="t10-app"> once (AppShell does this).
+
+   There is ONE top bar across the whole back office: BackOfficeTopNav. AppShell
+   no longer ships its own standalone topbar — `appSwitcher` is required and the
+   former `brand`/`user` props are deprecated no-ops (the brand lockup and signed-
+   in user now live in BackOfficeTopNav). See the migration note in README.
 
    Nav is data-driven. Prefer the grouped form — you own the group labels, order,
    membership, nesting, and visibility. Icons are Font Awesome (free) — render an
@@ -53,6 +59,9 @@ export interface NavGroup {
   items: NavItem[];
 }
 
+/** @deprecated The standalone AppShell topbar is gone — the brand lockup lives
+ *  in `BackOfficeTopNav`. Kept only for back-compat of the deprecated `brand`
+ *  prop's type. */
 export interface BrandSpec {
   badge?: ReactNode;
   title: ReactNode;
@@ -68,16 +77,17 @@ interface AppShellProps {
   isActive?: (item: NavItem) => boolean;
   /** Fires on click. For `href` items the browser also navigates. */
   onNavigate?: (id: string, item: NavItem) => void;
-  /** Topbar brand lockup. Defaults to the scoutpack mark for back-compat.
-   *  Ignored when `appSwitcher` is supplied. */
+  /** @deprecated No-op. The standalone topbar is gone; the brand lockup now
+   *  lives in `BackOfficeTopNav` (its logo points at the dashboard). */
   brand?: BrandSpec;
-  /** Renders in place of the default topbar — pass <BackOfficeTopNav> here to
-   *  make the shared cross-app product switcher the single top bar (the two
-   *  bars are both sticky pine and would otherwise collide). When set, `brand`
-   *  and `user` are unused. Omit it for the standalone topbar (back-compat). */
-  appSwitcher?: ReactNode;
+  /** The single top bar for the whole back office — always pass
+   *  `<BackOfficeTopNav active=… user=… logoutUrl=… />`. Required: AppShell no
+   *  longer renders a standalone topbar of its own. */
+  appSwitcher: ReactNode;
   /** Legacy role gate for `leaderOnly` items in flat-`nav` mode. */
   isLeader?: boolean;
+  /** @deprecated No-op. The signed-in user is shown by `BackOfficeTopNav`
+   *  (pass `user` there instead). */
   user?: { name: string; role?: string };
   title: ReactNode;
   subtitle?: ReactNode;
@@ -91,8 +101,6 @@ const LEGACY_GROUPS: { label: string; ids: string[] }[] = [
   { label: "Operations", ids: ["closet", "lists", "templates", "trips"] },
   { label: "Roster", ids: ["roster", "settings"] },
 ];
-
-const DEFAULT_BRAND: BrandSpec = { badge: "T10", title: "scoutpack", subtitle: "Back Office · RWC" };
 
 function isGrouped(nav: NavGroup[] | NavItem[]): nav is NavGroup[] {
   return Array.isArray((nav as NavGroup[])[0]?.items);
@@ -173,31 +181,13 @@ function NavNode({
 }
 
 export function AppShell({
-  nav, active, isActive, onNavigate, brand, appSwitcher, isLeader = false, user, title, subtitle, actions, children,
+  nav, active, isActive, onNavigate, appSwitcher, isLeader = false, title, subtitle, actions, children,
 }: AppShellProps) {
   const groups = toGroups(nav, isLeader);
-  const b = brand ?? DEFAULT_BRAND;
 
   return (
     <div className="t10-app">
-      {appSwitcher ?? (
-        <div className="t10-topbar">
-          <div className="t10-brand">
-            {b.badge != null && <div className="t10-brand__badge">{b.badge}</div>}
-            <div>
-              {b.title}
-              {b.subtitle != null && (
-                <small style={{ display: "block", fontFamily: "var(--t10-font-body)", fontWeight: 500, fontSize: 10, letterSpacing: ".22em", color: "#9fb6a3", textTransform: "uppercase", marginTop: -2 }}>
-                  {b.subtitle}
-                </small>
-              )}
-            </div>
-          </div>
-          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 14, fontSize: 12, color: "#dfe6da" }}>
-            {user && <span>{user.name}{user.role ? ` · ${user.role}` : ""}</span>}
-          </div>
-        </div>
-      )}
+      {appSwitcher}
 
       <div className="t10-shellwrap">
         <div className="t10-shell">
