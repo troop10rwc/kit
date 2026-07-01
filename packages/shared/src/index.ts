@@ -8,13 +8,14 @@
 /** Effective access role, derived from the roster (NOT the raw OIDC claim). */
 export type Role = "leader" | "scout";
 
-/** Roster positions. The five leadership positions confer the "leader" role. */
+/** Roster positions. The six leadership positions confer the "leader" role. */
 export type Position =
   | "scoutmaster"
   | "assistant_scoutmaster"
   | "crew_advisor"
   | "assistant_crew_advisor"
   | "senior_patrol_leader"
+  | "quartermaster"
   | "scout";
 
 export const LEADER_POSITIONS = [
@@ -23,6 +24,7 @@ export const LEADER_POSITIONS = [
   "crew_advisor",
   "assistant_crew_advisor",
   "senior_patrol_leader",
+  "quartermaster",
 ] as const satisfies readonly Position[];
 
 /** Identity resolved from the verified Cloudflare Access JWT. */

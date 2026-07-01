@@ -340,6 +340,7 @@ describe("roleForPosition", () => {
     ["crew_advisor", false, "leader"],
     ["assistant_crew_advisor", false, "leader"],
     ["senior_patrol_leader", false, "leader"],
+    ["quartermaster", false, "leader"],
     ["scout", true, "scout"], // explicit override beats group fallback
     ["scout", false, "scout"],
   ] as const)("position=%s group=%s => %s", (pos, group, expected) => {
