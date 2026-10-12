@@ -364,3 +364,90 @@ export function requireSession(deps: RequireSessionDeps): MiddlewareHandler {
     return next();
   };
 }
+
+/* ============================================================================
+   Device tokens — per-member bearer tokens for clients that can't carry the
+   session cookie (the Scoutbook browser extension).
+
+   The member signs in with a passkey at id.troop10rwc.org/connect/extension,
+   which mints a long-lived, individually revocable token tied to their Slack
+   `sub` and hands it to the extension. The extension sends it as
+   `Authorization: Bearer t10d_…`; app Workers resolve it here against the SAME
+   troop10-id D1 as sessions, so every write is attributable to a member.
+
+   Unlike sessions, only the SHA-256 of the token is stored (the row id), so a
+   read of the table can't be replayed as a credential. The hub hashes with
+   `hashDeviceToken` too — one contract for issuer and verifier.
+   ========================================================================== */
+
+/** Prefix on every device token — makes them greppable in logs/leak scanners. */
+export const DEVICE_TOKEN_PREFIX = "t10d_";
+/** Default device-token lifetime: 90 days. Members reconnect after expiry. */
+export const DEVICE_TOKEN_MAX_AGE = 90 * 24 * 60 * 60;
+/** Only bump `last_used_at` once per hour so the lookup isn't a write per request. */
+const DEVICE_TOKEN_TOUCH_INTERVAL = 3600;
+
+/** Hex SHA-256 of a device token — the `device_tokens.id` it's stored under. */
+export async function hashDeviceToken(token: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/** The token from an `Authorization: Bearer <token>` header, or null. */
+export function readBearerToken(headers: Headers): string | null {
+  const match = (headers.get("authorization") ?? "").match(/^Bearer\s+(\S+)$/i);
+  return match ? match[1]! : null;
+}
+
+/**
+ * Build a device-token resolver bound to the troop10-id D1. Returns the member
+ * identity for a live token, or `null` when it's malformed, unknown (revoked), or
+ * expired. Best-effort records `last_used_at` (hourly) for the hub's device list.
+ */
+export function d1DeviceTokenLookup(
+  db: D1Database,
+): (token: string) => Promise<SessionIdentity | null> {
+  return async (token) => {
+    if (!token.startsWith(DEVICE_TOKEN_PREFIX)) return null;
+    const id = await hashDeviceToken(token);
+    const row = await db
+      .prepare(
+        "SELECT t.slack_sub AS sub, t.expires_at AS expires_at, u.name AS name, u.email AS email " +
+          "FROM device_tokens t LEFT JOIN users u ON u.slack_sub = t.slack_sub WHERE t.id = ?",
+      )
+      .bind(id)
+      .first<SessionRow>();
+    if (!row) return null;
+    const now = nowSeconds();
+    if (!row.expires_at || row.expires_at < now) return null;
+    try {
+      await db
+        .prepare(
+          "UPDATE device_tokens SET last_used_at = ? WHERE id = ? AND (last_used_at IS NULL OR last_used_at < ?)",
+        )
+        .bind(now, id, now - DEVICE_TOKEN_TOUCH_INTERVAL)
+        .run();
+    } catch {
+      // Usage tracking is cosmetic; never fail auth over it.
+    }
+    return { sub: row.sub, name: row.name ?? undefined, email: row.email ?? undefined };
+  };
+}
+
+/**
+ * Framework-free bearer auth for API endpoints called by the extension. Returns
+ * the member identity, or null for a missing/invalid token. Fails closed: a
+ * lookup error is treated as unauthenticated.
+ */
+export async function authenticateDeviceRequest(
+  request: Request,
+  db: D1Database,
+): Promise<SessionIdentity | null> {
+  const token = readBearerToken(request.headers);
+  if (!token) return null;
+  try {
+    return await d1DeviceTokenLookup(db)(token);
+  } catch {
+    return null;
+  }
+}

@@ -230,6 +230,14 @@ Worker-side middleware and session helpers (`requireSession`, `d1SessionLookup`,
 email? }`); the roster role is keyed by the member's **email**, the reliable
 identity key.
 
+Clients that can't carry the cookie (the Scoutbook browser extension) use
+**device tokens**: the member connects the client at
+`id.troop10rwc.org/connect/extension` with a passkey, and the hub mints a
+90-day, individually revocable `t10d_…` bearer token stored hashed in the D1
+`device_tokens` table. API endpoints resolve it with
+`authenticateDeviceRequest(request, SESSIONS_DB)` (or `d1DeviceTokenLookup`),
+which returns the same `{ sub, name?, email? }` identity as a session.
+
 The legacy Access path (`withAuth`, `verifyAccessJwt`) stays exported until each
 app migrates — see [`STACK.md`](STACK.md#consuming-the-kit) for wiring.
 

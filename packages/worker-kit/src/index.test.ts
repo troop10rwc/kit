@@ -5,9 +5,14 @@ import {
   type SessionIdentity,
   type SessionVariables,
   buildSessionCookie,
+  authenticateDeviceRequest,
   clearSessionCookie,
+  d1DeviceTokenLookup,
   d1SessionLookup,
+  DEVICE_TOKEN_PREFIX,
   getAccessGroups,
+  hashDeviceToken,
+  readBearerToken,
   requireLeader,
   requireSession,
   roleForPosition,
@@ -633,5 +638,99 @@ describe("requireSession", () => {
 
   it("throws if neither db nor lookup is provided", () => {
     expect(() => requireSession({ authOrigin })).toThrow(/provide either/);
+  });
+});
+
+/* ----------------------------- device tokens ----------------------------- */
+
+/** D1 stub keyed by token hash; records UPDATE (last_used_at) binds. */
+function fakeTokenDb(rows: Record<string, SessionRowLike | undefined>) {
+  const touched: unknown[][] = [];
+  const db = {
+    prepare: (sql: string) => ({
+      bind: (...args: unknown[]) => ({
+        first: async () => rows[args[0] as string] ?? null,
+        run: async () => {
+          if (sql.startsWith("UPDATE")) touched.push(args);
+          return { meta: { changes: 1 } };
+        },
+      }),
+    }),
+  } as unknown as D1Database;
+  return { db, touched };
+}
+
+describe("device tokens", () => {
+  const token = `${DEVICE_TOKEN_PREFIX}abc123`;
+
+  it("hashDeviceToken is hex SHA-256", async () => {
+    expect(await hashDeviceToken("abc")).toBe(
+      "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    );
+  });
+
+  it("readBearerToken parses the Authorization header", () => {
+    expect(readBearerToken(new Headers({ Authorization: "Bearer xyz" }))).toBe("xyz");
+    expect(readBearerToken(new Headers({ Authorization: "bearer xyz" }))).toBe("xyz");
+    expect(readBearerToken(new Headers({ Authorization: "Basic xyz" }))).toBeNull();
+    expect(readBearerToken(new Headers())).toBeNull();
+  });
+
+  it("resolves a live token by its hash and touches last_used_at", async () => {
+    const { db, touched } = fakeTokenDb({
+      [await hashDeviceToken(token)]: { sub: "U1", expires_at: future(), name: "Alice", email: "a@b" },
+    });
+    expect(await d1DeviceTokenLookup(db)(token)).toEqual({ sub: "U1", name: "Alice", email: "a@b" });
+    expect(touched).toHaveLength(1);
+    expect(touched[0]![1]).toBe(await hashDeviceToken(token));
+  });
+
+  it("rejects an unprefixed token without querying", async () => {
+    const prepare = vi.fn();
+    const db = { prepare } as unknown as D1Database;
+    expect(await d1DeviceTokenLookup(db)("abc123")).toBeNull();
+    expect(prepare).not.toHaveBeenCalled();
+  });
+
+  it("rejects unknown and expired tokens", async () => {
+    const { db } = fakeTokenDb({
+      [await hashDeviceToken(token)]: { sub: "U1", expires_at: past(), name: null, email: null },
+    });
+    expect(await d1DeviceTokenLookup(db)(token)).toBeNull();
+    expect(await d1DeviceTokenLookup(db)(`${DEVICE_TOKEN_PREFIX}other`)).toBeNull();
+  });
+
+  it("does not fail auth when the last_used_at write fails", async () => {
+    const db = {
+      prepare: (sql: string) => ({
+        bind: () => ({
+          first: async () => ({ sub: "U1", expires_at: future(), name: null, email: null }),
+          run: async () => {
+            throw new Error(`read-only: ${sql}`);
+          },
+        }),
+      }),
+    } as unknown as D1Database;
+    expect(await d1DeviceTokenLookup(db)(token)).toEqual({ sub: "U1" });
+  });
+
+  it("authenticateDeviceRequest: bearer → identity, and fails closed", async () => {
+    const { db } = fakeTokenDb({
+      [await hashDeviceToken(token)]: { sub: "U2", expires_at: future(), name: "Bob", email: "b@b" },
+    });
+    const req = (auth?: string) =>
+      new Request("https://x.test/api", { headers: auth ? { Authorization: auth } : {} });
+    expect(await authenticateDeviceRequest(req(`Bearer ${token}`), db)).toEqual({
+      sub: "U2",
+      name: "Bob",
+      email: "b@b",
+    });
+    expect(await authenticateDeviceRequest(req(), db)).toBeNull();
+    const broken = {
+      prepare: () => {
+        throw new Error("D1 down");
+      },
+    } as unknown as D1Database;
+    expect(await authenticateDeviceRequest(req(`Bearer ${token}`), broken)).toBeNull();
   });
 });
